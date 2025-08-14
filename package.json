@@ -19,6 +19,7 @@
     "@mui/x-charts": "^8.8.0",
     "@mui/x-date-pickers": "^8.8.0",
     "axios": "^1.10.0",
+    "bulma": "^1.0.4",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.10.0",
