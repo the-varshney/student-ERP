@@ -5,7 +5,8 @@ import { useTheme } from '@mui/material/styles';
 import ThemeToggle from './components/ThemeToggle';
 import { ThemeContext } from './context/ThemeContext';
 import { themes } from './components/theme';
-import { AuthContext, ProtectedRoute } from './context/RoleBasedAccess';
+import ProtectedRoute from './context/ProtectedRoute';
+import AuthContext from './context/AuthContext';
 import { UserProfile } from './components/header';
 import Header from './components/header';
 import './App.css';
@@ -14,13 +15,17 @@ import { auth } from './firebase/Firebase';
 // Pages
 import Register from './pages/common/registration';
 import Login from './pages/common/login';
+import Message from './pages/common/Message';
 import Home from './pages/students/home';
 import AdminHome from './pages/admins/AdminHome';
 import AddTeacher from './pages/admins/AddTeacher';
-
+import StudentsVerify from './pages/teachers/verifyStudentData';
 import TeacherHome from './pages/teachers/home';
+import StudentApproval from './pages/admins/studentsApproval';
+import AttendanceTaking from './pages/teachers/attedanceTaking';
+import Attendance from './pages/students/attendance';
 
-// Test Component (for testing) later will be about us
+// Test Component
 const Test = () => {
   const { mode } = useContext(ThemeContext);
   const theme = useTheme();
@@ -64,7 +69,7 @@ const Test = () => {
       </Button>
       <Button
         component={Link}
-        to="/registration"
+        to="/register"
         variant="contained"
         sx={{
           mt: 2,
@@ -182,14 +187,15 @@ const Test = () => {
 };
 
 export default function App() {
-  const { role } = useContext(AuthContext);
+  const { role, loading } = useContext(AuthContext);
   const { resetTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const location = useLocation();
+
   const isHomePage = ['/home', '/teacher', '/admin'].includes(location.pathname);
+  
   const isLoginOrRegister = ['/login', '/register'].includes(location.pathname);
 
-  // Customize UserProfile for logout
   const CustomUserProfile = () => {
     const handleLogout = async () => {
       const uid = auth.currentUser?.uid;
@@ -221,26 +227,38 @@ export default function App() {
       )}
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Test />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          element={<ProtectedRoute allowedRoles={["Guest"]} />}
+        >
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
+        
+        <Route path="/test" element={<Test />} />
+
+        <Route
+          element={<ProtectedRoute allowedRoles={["unverified", "verified"]} />}
+        >
+          <Route path="/message" element={<Message />} />
+        </Route>
 
         {/* Student Routes */}
-        <Route element={<ProtectedRoute allowedRoles={['Student', 'Teacher', 'Admin']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['Student']} />}>
           <Route path="/home" element={<Home />} />
-          <Route path="/attendance" element={<Typography>Attendance Module</Typography>} />
+          <Route path="/attendance" element={<Attendance />} />
         </Route>
 
         {/* Teacher Routes */}
-        <Route element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['Teacher', 'CollegeAssociate']} />}>
           <Route path="/teacher" element={<TeacherHome />} />
-          <Route path="/attendance" element={<Typography>Attendance Module</Typography>} />
+          <Route path="/teacher/attendance" element={<AttendanceTaking />} />
+          <Route path="/college/verify-students" element={<StudentsVerify/>} />
         </Route>
 
         {/* Admin Routes */}
         <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
           <Route path="/admin" element={<AdminHome />} />
-          <Route path="/dashboard" element={<Typography>Admin Dashboard</Typography>} />
+          <Route path="/admin/student-approval" element={<StudentApproval />} />
           <Route path="/admin/add-teacher" element={<AddTeacher />} />
         </Route>
 
@@ -248,11 +266,14 @@ export default function App() {
         <Route
           path="*"
           element={
+            loading ? <div>Loading...</div> :
             <Navigate
               to={
                 role === 'Admin' ? '/admin' :
                 role === 'Teacher' ? '/teacher' :
+                role === 'CollegeAssociate' ? '/teacher' :
                 role === 'Student' ? '/home' :
+                role === 'verified' || role === 'unverified' ? '/message' :
                 '/login'
               }
               replace

@@ -1,10 +1,21 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { TextField, Button, Typography, Box, Alert, Stack, Card, IconButton, InputAdornment } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+  Stack,
+  Card,
+  IconButton,
+  InputAdornment,
+  CircularProgress,
+} from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { motion, AnimatePresence } from "framer-motion"; 
+import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "../../firebase/Firebase";
 import { ThemeContext } from "../../context/ThemeContext";
 
@@ -16,36 +27,8 @@ function Login() {
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
   const [errors, setErrors] = useState({ email: "", password: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-
-  // Redirect authenticated users based on role
-  // i will be use local storage and session 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, "Students", user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            const role = userData.role || "Student";
-            if (role === "Admin") {
-              navigate("/admin/home");
-            } else if (role === "Teacher") {
-              navigate("/teacher/home");
-            } else {
-              navigate("/home");
-            }
-          } else {
-            navigate("/home");
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          navigate("/home");
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
 
   const validateInputs = () => {
     let isValid = true;
@@ -68,9 +51,33 @@ function Login() {
     return isValid;
   };
 
+  const fetchUserRole = async (uid) => {
+    const collections = ["Admins", "Teachers", "Students"];
+    for (const collectionName of collections) {
+      const docRef = doc(db, collectionName, uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const details = docSnap.data();
+        let role = details.role || "unverified";
+
+        if (collectionName === "Teachers") {
+          role = details.isCollegeAssociate ? "CollegeAssociate" : "Teacher";
+        }
+        
+        console.log(`Fetched role: ${role} from ${collectionName}`);
+        return { role, details };
+      }
+    }
+    
+    console.log("No user document found, defaulting to unverified");
+    return { role: "unverified", details: null };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
+    setErrors({ email: "", password: "" });
 
     if (!validateInputs()) {
       setMessage("Please correct the highlighted errors.");
@@ -78,11 +85,39 @@ function Login() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setMessage("Login successful! Redirecting...");
+      console.log("Login attempt with email:", email);
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        localStorage.removeItem(`role_${uid}`);
+        localStorage.removeItem(`userDetails_${uid}`);
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      setMessage("Login successful! Fetching role...");
       setMessageType("success");
+
+      const { role, details } = await fetchUserRole(user.uid);
+
+      localStorage.setItem(`role_${user.uid}`, role);
+      if (details) {
+        localStorage.setItem(`userDetails_${user.uid}`, JSON.stringify(details));
+      }
+
+      const redirectTo =
+        role === "Admin" ? "/admin" :
+        role === "Teacher" || role === "CollegeAssociate" ? "/teacher" :
+        role === "Student" ? "/home" :
+        role === "verified" || role === "unverified" ? "/message" :
+        "/login";
+
+      console.log("Redirecting to:", redirectTo);
+      navigate(redirectTo, { replace: true });
+
     } catch (error) {
+      console.error("Login error:", error.code, error.message);
       let errorMessage = "Login failed!";
       switch (error.code) {
         case "auth/invalid-email":
@@ -111,11 +146,12 @@ function Login() {
       setMessage(errorMessage);
       setMessageType("error");
     }
+    setIsSubmitting(false);
   };
 
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => setMessage(null), 3000); 
+      const timer = setTimeout(() => setMessage(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [message]);
@@ -124,7 +160,6 @@ function Login() {
     setShowPassword(!showPassword);
   };
 
-  // Animation variants for the notification
   const notificationVariants = {
     hidden: { y: 200, opacity: 0 },
     visible: { y: 180, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
@@ -150,7 +185,7 @@ function Login() {
           pl: 4,
           pt: 4,
           flexDirection: "column",
-          position: "relative", 
+          position: "relative",
         }}
       >
         <AnimatePresence>
@@ -162,7 +197,7 @@ function Login() {
               exit="exit"
               style={{
                 position: "absolute",
-                top: -100, 
+                top: -100,
                 width: "100%",
                 maxWidth: 500,
                 zIndex: 10,
@@ -277,6 +312,7 @@ function Login() {
                 variant="contained"
                 type="submit"
                 fullWidth
+                disabled={isSubmitting}
                 className="bg-blue-700 hover:bg-blue-800"
                 sx={{
                   py: 1.5,
@@ -287,7 +323,7 @@ function Login() {
                   },
                 }}
               >
-                Login
+                {isSubmitting ? <CircularProgress size={24} color="inherit" /> : "Login"}
               </Button>
 
               <Typography align="center" className="text-gray-600">

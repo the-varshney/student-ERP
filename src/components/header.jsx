@@ -6,7 +6,7 @@ import { Menu as MenuIcon } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../firebase/Firebase";
 import { ThemeContext } from "../context/ThemeContext";
-import { AuthContext } from "../context/RoleBasedAccess";
+import AuthContext from "../context/AuthContext";
 import SideMenu from "./menu";
 import PropTypes from "prop-types";
 
@@ -127,7 +127,7 @@ export const UserProfile = () => {
   );
 };
 
-// main header
+// header component
 const Header = () => {
   const { mode } = useContext(ThemeContext);
   const isMobile = useMediaQuery("(max-width: 768px)");

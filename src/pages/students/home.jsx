@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
+import AuthContext from '../../context/AuthContext';
 import {
   Typography,
   Container,
@@ -30,10 +31,8 @@ import {
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { themes } from '../../components/theme';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from "../../firebase/Firebase";
 
-// Dynamic greeting based on time
+// Greeting function
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
@@ -41,44 +40,17 @@ const getGreeting = () => {
   return 'Good Evening';
 };
 
-const Home = () => {
+export default function Home() {
   const { mode } = useContext(ThemeContext);
+  const { userDetails } = useContext(AuthContext); // Use cached context data
   const theme = useTheme();
-  const [userInfo, setUserInfo] = useState({ collegeName: 'Institute', fullName: 'Loading...' });
 
-  // Fetch student data from Firebase
-  // will be replaced by cache
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const userDocRef = doc(db, 'Students', user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const fullName = `${data.firstName || 'Student'} ${data.lastName || ''}`.trim();
-            setUserInfo({
-              collegeName: data.collegeName || 'BCA Institute of Technology',
-              fullName,
-            });
-          } else {
-            console.error('No such document!');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setUserInfo({
-          collegeName: 'BCA Institute of Technology',
-          fullName: 'Student',
-        });
-      }
-    };
+  const fullName = userDetails
+    ? `${userDetails.firstName || 'Student'} ${userDetails.lastName || ''}`.trim()
+    : 'Loading...';
 
-    fetchUserData();
-  }, []);
+  const collegeName = userDetails?.collegeName || 'Institute';
 
-  // Feature buttons for ERP
   const featureButtons = [
     { label: 'Attendance', link: '/attendance', icon: <CalendarToday /> },
     { label: 'Results', link: '/result', icon: <School /> },
@@ -95,9 +67,7 @@ const Home = () => {
     { label: 'Notes', link: '/notes', icon: <NoteAlt /> },
     { label: 'Assignments', link: '/assignments', icon: <Assignment /> },
     { label: 'Achievements', link: '/achievements', icon: <EmojiEvents /> },
-  ].map((button) => ({
-    ...button,
-  }));
+  ];
 
   return (
     <Box
@@ -126,7 +96,7 @@ const Home = () => {
                 color: '#1565C0',
               }}
             >
-              {getGreeting()}, {userInfo.fullName}!
+              {getGreeting()}, {fullName}!
             </Typography>
             <Typography
               variant="h4"
@@ -136,7 +106,7 @@ const Home = () => {
                 fontStyle: 'italic',
               }}
             >
-              Welcome to {userInfo.collegeName} ERP Portal
+              Welcome to {collegeName} ERP Portal
             </Typography>
           </motion.div>
         </Box>
@@ -147,16 +117,14 @@ const Home = () => {
               key={index}
               sx={{
                 width: {
-                  xs: '80%',    // width on extra-small screens
-                  sm: '45%',  // width on small screens and up
+                  xs: '80%',
+                  sm: '45%',
                   md: '31.30%'
                 },
               }}
             >
               <motion.div
-                whileHover={{
-                  scale: 1.05,
-                }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -230,6 +198,4 @@ const Home = () => {
       </Container>
     </Box>
   );
-};
-
-export default Home;
+}

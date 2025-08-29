@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
+import AuthContext from '../../context/AuthContext';
 import {
   AppBar,
   Typography,
   Grid,
-  Card,
   CardActionArea,
   Container,
   Box,
   IconButton,
   Divider,
   useTheme,
+  Card,
 } from '@mui/material';
 import {
   CalendarToday,
@@ -25,14 +26,19 @@ import {
   EventNote,
   Schedule,
   NoteAdd,
+  VerifiedUser,
+  SupportAgent,
+  Campaign,          
+  ConfirmationNumber,
+  PeopleAlt,         
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase/Firebase';
 import { HamburgerMenu, UTSLogo, UserProfile } from '../../components/header';
 
-// Dynamic greeting based on time
+const MotionCard = motion.create(Card);
+
+// Greeting function
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
@@ -40,43 +46,19 @@ const getGreeting = () => {
   return 'Good Evening';
 };
 
-const TeacherHome = () => {
+export default function TeacherHome() {
   const { mode } = useContext(ThemeContext);
+  const { userDetails, role } = useContext(AuthContext);
   const theme = useTheme();
-  const [userInfo, setUserInfo] = useState({ collegeName: 'Institute', fullName: 'Loading...' });
 
-  // Fetch user data from Firebase
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const userDocRef = doc(db, 'Teachers', user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const fullName = `${data.firstName || 'Teacher'} ${data.lastName || ''}`.trim();
-            setUserInfo({
-              collegeName: data.collegeName || 'BCA Institute of Technology',
-              fullName,
-            });
-          } else {
-            console.error('No such document!');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setUserInfo({
-          collegeName: 'BCA Institute of Technology',
-          fullName: 'Teacher',
-        });
-      }
-    };
+  const fullName = userDetails
+    ? `${userDetails.firstName || 'Teacher'} ${userDetails.lastName || ''}`.trim()
+    : 'Loading...';
 
-    fetchUserData();
-  }, []);
+  const collegeName = userDetails?.college || 'Institute';
 
-  const teacherButtons = [
+  // Teacher-only buttons (includes teacher announcements)
+  const teacherOnlyButtons = [
     { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
     { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
     { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <NoteAdd /> },
@@ -84,49 +66,159 @@ const TeacherHome = () => {
     { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
     { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
     { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
-    { label: 'Fee Overview', link: '/teacher/dues', icon: <CurrencyRupee /> },
     { label: 'Upload Books', link: '/teacher/upload-books', icon: <MenuBook /> },
     { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
     { label: 'Library', link: '/teacher/library', icon: <EventNote /> },
-    { label: 'Upload Timetable', link: '/teacher/uploadtts', icon: <UploadFile /> },
+    { label: 'Announcements', link: '/teacher/announcement', icon: <Campaign /> },
   ];
+
+  // Teacher tools associates may also use (NO teacher announcements here)
+  const sharedTeacherToolsForAssociate = [
+    { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
+    { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
+    { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <NoteAdd /> },
+    { label: 'Manage Assignments', link: '/teacher/assignments', icon: <Assignment /> },
+    { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
+    { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
+    { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
+    { label: 'Upload Books', link: '/teacher/upload-books', icon: <MenuBook /> },
+    { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
+    { label: 'Library', link: '/teacher/library', icon: <EventNote /> },
+  ];
+
+  // Associate-only section (will render AFTER Divider)
+  const associateOnlyButtons = [
+    { label: 'Verify Students Data', link: '/college/verify-students', icon: <VerifiedUser /> },
+    { label: 'Students List', link: '/associate/students', icon: <PeopleAlt /> },
+    { label: 'Fee Overview', link: '/teacher/dues', icon: <CurrencyRupee /> },
+    { label: 'Announcements', link: '/associate/announcement', icon: <Campaign /> },
+    { label: 'Upload Timetable', link: '/teacher/uploadtts', icon: <UploadFile /> },
+    { label: 'Student Chats', link: '/associate/student-chats', icon: <SupportAgent /> },
+    { label: 'Ticket Desk', link: '/associate/tickets', icon: <ConfirmationNumber /> },
+
+  ];
+
+  const renderButtonGrid = (buttons, startIndex = 0) => (
+    <Grid container spacing={4} justifyContent="center">
+      {buttons.map((button, index) => (
+        <Grid
+          key={`${button.label}-${index}`}
+          sx={{
+            width: {
+              xs: '80%',
+              sm: '45%',
+              md: '31.30%',
+            },
+          }}
+        >
+          <MotionCard
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: (startIndex + index) * 0.06 }}
+            sx={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(5px)',
+              color: theme.palette.contrastText,
+              borderRadius: '12px',
+              border: `2px solid ${theme.palette.divider}`,
+              boxShadow: `0 4px 8px rgba(0,0,0,0.1)`,
+              overflow: 'hidden',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                background: theme.palette.green.hover,
+                color: theme.palette.contrastText,
+                boxShadow: `0 8px 16px rgba(0,0,0,0.4)`,
+                transform: 'translateY(-4px)',
+                '& .MuiTypography-root': {
+                  color: theme.palette.contrastText,
+                },
+              },
+            }}
+          >
+            <CardActionArea component={Link} to={button.link}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  p: 3,
+                  minHeight: 125,
+                }}
+              >
+                <IconButton
+                  sx={{
+                    color: theme.palette.contrastText,
+                    mr: 2,
+                    fontSize: '1.8rem',
+                    transition: 'transform 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.2)',
+                      color: theme.palette.primary.main,
+                    },
+                  }}
+                >
+                  {button.icon}
+                </IconButton>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    letterSpacing: 1,
+                    color: theme.palette.contrastText,
+                  }}
+                  className="MuiTypography-root"
+                >
+                  {button.label}
+                </Typography>
+              </Box>
+            </CardActionArea>
+          </MotionCard>
+        </Grid>
+      ))}
+    </Grid>
+  );
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        background: mode === 'default'
-          ? `linear-gradient(135deg, ${theme.palette.green.main} -25%, ${theme.palette.green.focus} 100%)`
-          : mode === 'light'
-          ? theme.palette.green.main
-          : `linear-gradient(135deg, ${theme.palette.green.main} -25%, ${theme.palette.background.paper} 100%)`,
+        background:
+          mode === 'default'
+            ? `linear-gradient(135deg, ${theme.palette.green.main} -25%, ${theme.palette.green.focus} 100%)`
+            : mode === 'light'
+            ? theme.palette.green.main
+            : `linear-gradient(135deg, ${theme.palette.green.main} -25%, ${theme.palette.background.paper} 100%)`,
         color: theme.palette.contrastText,
         transition: 'background 0.5s ease-in-out',
       }}
     >
+      {/* Top Navbar */}
       <AppBar position="static" sx={{ background: theme.palette.green.main }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', p: 1 }}>
           <Box sx={{ position: 'absolute', left: 60, top: 25, gap: 2, display: 'flex', alignItems: 'center' }}>
             <HamburgerMenu />
             <Typography variant="h6" sx={{ color: theme.palette.contrastText }}>
-              {userInfo.collegeName}
+              {collegeName}
             </Typography>
           </Box>
-
           <Box sx={{ display: 'flex', justifyContent: 'center', margin: '0 10px', position: 'relative', left: '39%' }}>
             <UTSLogo />
           </Box>
-
           <Box sx={{ display: 'flex', alignContent: 'center', position: 'relative', right: '15px' }}>
             <UserProfile />
             <Typography sx={{ alignContent: 'center', color: theme.palette.contrastText }}>
-              {userInfo.fullName}
+              {fullName}
             </Typography>
           </Box>
         </Box>
       </AppBar>
 
       <Container sx={{ py: 6 }}>
+        {/* Greeting */}
         <Box textAlign="center" mb={6}>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -141,7 +233,7 @@ const TeacherHome = () => {
                 color: theme.palette.green.main,
               }}
             >
-              {getGreeting()}, {userInfo.fullName}!
+              {getGreeting()}, {fullName}!
             </Typography>
             <Typography
               variant="h4"
@@ -151,100 +243,24 @@ const TeacherHome = () => {
                 fontStyle: 'italic',
               }}
             >
-              Welcome to {userInfo.collegeName} ERP Portal
+              Welcome to {collegeName} ERP Portal
             </Typography>
           </motion.div>
         </Box>
 
-        <Grid container spacing={4} justifyContent="center">
-          {teacherButtons.map((button, index) => (
-            <Grid
-              key={index}
-              sx={{
-                width: {
-                  xs: '80%',
-                  sm: '45%',
-                  md: '31.30%',
-                },
-              }}
-            >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(5px)',
-                    color: theme.palette.contrastText,
-                    borderRadius: '12px',
-                    border: `2px solid ${theme.palette.divider}`,
-                    boxShadow: `0 4px 8px rgba(0,0,0,0.1)`,
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      background: theme.palette.green.hover,
-                      color: theme.palette.contrastText,
-                      boxShadow: `0 8px 16px rgba(0,0,0,0.4)`,
-                      transform: 'translateY(-4px)',
-                      '& .MuiTypography-root': {
-                        color: theme.palette.contrastText,
-                      },
-                    },
-                  }}
-                >
-                  <CardActionArea component={Link} to={button.link}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        p: 3,
-                        minHeight: 125,
-                      }}
-                    >
-                      <IconButton
-                        sx={{
-                          color: theme.palette.contrastText,
-                          mr: 2,
-                          fontSize: '1.8rem',
-                          transition: 'transform 0.3s ease',
-                          '&:hover': {
-                            transform: 'scale(1.2)',
-                            color: theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        {button.icon}
-                      </IconButton>
-                      <Typography
-                        variant="h5"
-                        sx={{
-                          fontWeight: 'bold',
-                          fontSize: '1.1rem',
-                          letterSpacing: 1,
-                          color: theme.palette.contrastText,
-                        }}
-                        className="MuiTypography-root"
-                      >
-                        {button.label}
-                      </Typography>
-                    </Box>
-                  </CardActionArea>
-                </Card>
-              </motion.div>
-            </Grid>
-          ))}
-        </Grid>
+        {/* Top section: Teacher tools */}
+        {role === 'CollegeAssociate'
+          ? renderButtonGrid(sharedTeacherToolsForAssociate)
+          : renderButtonGrid(teacherOnlyButtons)}
 
-        <Divider sx={{ my: 2, backgroundColor: theme.palette.green.main }} />
+        {/* Associate-only section below Divider */}
+        {role === 'CollegeAssociate' && (
+          <>
+            <Divider sx={{ my: 4, backgroundColor: theme.palette.green.main, opacity: 0.6 }} />
+            {renderButtonGrid(associateOnlyButtons, sharedTeacherToolsForAssociate.length)}
+          </>
+        )}
       </Container>
     </Box>
   );
-};
-
-export default TeacherHome;
+}
