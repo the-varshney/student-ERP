@@ -7,9 +7,13 @@ import AuthContext from "./AuthContext";
 
 const rolePermissions = {
     Admin: ["/admin", "/dashboard", "/admin/add-teacher", "/admin/student-approval"],
-    Teacher: ["/teacher", "/attendance", "/teacher/schedule", "/teacher/upload-notes", "/teacher/assignments", "/teacher/feedback", "/teacher/results", "/teacher/progress", "/teacher/upload-books", "/teacher/chat", "/teacher/library", "/teacher/uploadtts", "/teacher/dues"],
-    CollegeAssociate: ["/teacher", "/associate", "/college/verify-students", "/associate/student-chats", "/teacher/uploadtts", "/teacher/dues"],
-    Student: ["/home", "/attendance"],
+
+    Teacher: ["/teacher", "/attendance", "/teacher/schedule", "/teacher/upload-notes", "/teacher/assignments", "/teacher/feedback", "/teacher/results", "/teacher/progress", "/teacher/library", "/teacher/chat"],
+
+    CollegeAssociate: ["/teacher", "/associate", "/college/verify-students", "college/exam-schedule-create", "/college/publish-results","/associate/student-chats", "/teacher/uploadtts", "/teacher/dues", "/associate/announcement", "/associate/tickets"],
+
+    Student: ["/home", "/attendance", "/result", "/schedule", "/notes", "/assignments", "/feedback", "/progress", "/library", "/chat", "/dues", "/exams", "/holidays", "/tts"],
+
     Guest: ["/", "/login", "/register"],
     unverified: ["/message"],
     verified: ["/message"],
@@ -34,7 +38,7 @@ const fetchUserRoleAndDetails = async (uid) => {
             return { role, details, docRef };
         }
     }
-    // If user is in Firebase Auth but has no document in our collections
+    // If user is in Firebase Auth but has no document in collections (default case)
     return { role: "unverified", details: null, docRef: null };
 };
 

@@ -24,6 +24,16 @@ import TeacherHome from './pages/teachers/home';
 import StudentApproval from './pages/admins/studentsApproval';
 import AttendanceTaking from './pages/teachers/attedanceTaking';
 import Attendance from './pages/students/attendance';
+import ResultUpdate from './pages/teachers/resultUpdate';
+import Results from './pages/students/result';
+import AssociatePublishResults from './pages/teachers/publishResults';
+import Library from './pages/students/library';
+import TeacherLibrary from './pages/teachers/teacherLibrary';
+import ExamScheduleCreator from './pages/teachers/examSchedular';
+import ExamSchedule from './pages/students/examSchedule';
+import HolidaysPage from './pages/students/holidays';
+import ManageAssignments from './pages/teachers/manageAssignments';
+import Assignment from './pages/students/assignment';
 
 // Test Component
 const Test = () => {
@@ -246,13 +256,26 @@ export default function App() {
         <Route element={<ProtectedRoute allowedRoles={['Student']} />}>
           <Route path="/home" element={<Home />} />
           <Route path="/attendance" element={<Attendance />} />
+          <Route path="/result" element={<Results />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/exams" element={<ExamSchedule />} />
+          <Route path="/holidays" element={<HolidaysPage />} />
+          <Route path="/assignments" element={<Assignment />} />
         </Route>
 
         {/* Teacher Routes */}
         <Route element={<ProtectedRoute allowedRoles={['Teacher', 'CollegeAssociate']} />}>
           <Route path="/teacher" element={<TeacherHome />} />
           <Route path="/teacher/attendance" element={<AttendanceTaking />} />
+          <Route path="/teacher/results" element={< ResultUpdate />} />
+          <Route path="/teacher/library" element={<TeacherLibrary />} />
+          <Route path="/teacher/assignments" element={<ManageAssignments />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['CollegeAssociate']} />}>
+          <Route path="/college/publish-results" element={< AssociatePublishResults />} />
           <Route path="/college/verify-students" element={<StudentsVerify/>} />
+          <Route path="/college/exam-schedule-create" element={<ExamScheduleCreator/>} />
         </Route>
 
         {/* Admin Routes */}

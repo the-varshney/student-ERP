@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, {useContext } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import AuthContext from '../../context/AuthContext';
 import {
@@ -23,13 +23,13 @@ import {
   MenuBook,
   Chat,
   CurrencyRupee,
-  EventNote,
   Schedule,
   NoteAdd,
   VerifiedUser,
   SupportAgent,
   Campaign,          
   ConfirmationNumber,
+  CheckCircle as PublishIcon ,
   PeopleAlt,         
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
@@ -57,7 +57,7 @@ export default function TeacherHome() {
 
   const collegeName = userDetails?.college || 'Institute';
 
-  // Teacher-only buttons (includes teacher announcements)
+  // Teacher-only buttons 
   const teacherOnlyButtons = [
     { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
     { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
@@ -66,13 +66,12 @@ export default function TeacherHome() {
     { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
     { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
     { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
-    { label: 'Upload Books', link: '/teacher/upload-books', icon: <MenuBook /> },
     { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
-    { label: 'Library', link: '/teacher/library', icon: <EventNote /> },
+    { label: 'E-Library', link: '/teacher/library', icon: <MenuBook /> },
     { label: 'Announcements', link: '/teacher/announcement', icon: <Campaign /> },
   ];
 
-  // Teacher tools associates may also use (NO teacher announcements here)
+  // Teacher-associates buttons
   const sharedTeacherToolsForAssociate = [
     { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
     { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
@@ -81,20 +80,21 @@ export default function TeacherHome() {
     { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
     { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
     { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
-    { label: 'Upload Books', link: '/teacher/upload-books', icon: <MenuBook /> },
     { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
-    { label: 'Library', link: '/teacher/library', icon: <EventNote /> },
+    { label: 'Library', link: '/teacher/library', icon: <MenuBook  /> },
   ];
 
-  // Associate-only section (will render AFTER Divider)
+  // Associate-only section
   const associateOnlyButtons = [
     { label: 'Verify Students Data', link: '/college/verify-students', icon: <VerifiedUser /> },
     { label: 'Students List', link: '/associate/students', icon: <PeopleAlt /> },
     { label: 'Fee Overview', link: '/teacher/dues', icon: <CurrencyRupee /> },
+    { label: 'Publish Results', link: '/college/publish-results', icon: <PublishIcon /> },
     { label: 'Announcements', link: '/associate/announcement', icon: <Campaign /> },
     { label: 'Upload Timetable', link: '/teacher/uploadtts', icon: <UploadFile /> },
     { label: 'Student Chats', link: '/associate/student-chats', icon: <SupportAgent /> },
     { label: 'Ticket Desk', link: '/associate/tickets', icon: <ConfirmationNumber /> },
+    { label: 'Exam Scheduler ', link: '/college/exam-schedule-create', icon: <SupportAgent /> },
 
   ];
 
@@ -253,7 +253,7 @@ export default function TeacherHome() {
           ? renderButtonGrid(sharedTeacherToolsForAssociate)
           : renderButtonGrid(teacherOnlyButtons)}
 
-        {/* Associate-only section below Divider */}
+        {/* Associate-only section */}
         {role === 'CollegeAssociate' && (
           <>
             <Divider sx={{ my: 4, backgroundColor: theme.palette.green.main, opacity: 0.6 }} />

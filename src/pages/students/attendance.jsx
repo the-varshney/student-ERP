@@ -120,7 +120,7 @@ const Attendance = () => {
           setAttendanceData(prevResponse.data.attendanceRecords || []);
           setSubjectStats(prevResponse.data.subjectStats || []);
           setOverallStats(prevResponse.data.overallStats || { totalClasses: 0, totalPresent: 0, totalAbsent: 0, percentage: 'N/A' });
-          setStudentInfo(response.data.student); // Keep current student info
+          setStudentInfo(response.data.student);
         }
         
         setError(null);
@@ -205,7 +205,7 @@ const Attendance = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress size={60} />
         <Typography sx={{ ml: 2 }} variant="h6">Loading attendance data...</Typography>
       </Box>
@@ -240,7 +240,6 @@ const Attendance = () => {
               </Select>
             </FormControl>
 
-            {/* Refresh Button */}
             <Tooltip title="Refresh Data">
               <IconButton 
                 onClick={handleRefresh} 
