@@ -30,6 +30,9 @@ const programRoutes = require("./routes/ProgramRoutes");
 const subjectRoutes = require("./routes/SubjectRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
+const resultsRoutes = require("./routes/resultsRoutes");
+const examScheduleRoutes = require("./routes/examScheduleRoutes");
+const holidayRoutes = require('./routes/holidayRoutes');
 
 // Mount API routes
 app.use("/api/colleges", collegeRoutes);
@@ -38,6 +41,9 @@ app.use("/api/programs", programRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/results", resultsRoutes);
+app.use("/api/exam-schedules", examScheduleRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -61,7 +67,7 @@ app.use("*", (req, res) => {
 //  DB and Server 
 (async () => {
   try {
-    // MongoDB connection with better options
+    // MongoDB connection
     await mongoose.connect(process.env.MONGODB_URI, {
       useUnifiedTopology: true,
       maxPoolSize: 10,
