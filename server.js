@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const admin = require('firebase-admin');
 require("dotenv").config();
 
 const app = express();
@@ -23,6 +24,13 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' })); 
 app.use(express.urlencoded({ extended: true }));
 
+const serviceAccount = require('./AdminSDK.json');
+
+//INITIALIZE THE ADMIN APP
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 //  Routes 
 const collegeRoutes = require("./routes/collegeRoutes");
 const departmentRoutes = require("./routes/DepartmentRoutes");
@@ -33,6 +41,7 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 const resultsRoutes = require("./routes/resultsRoutes");
 const examScheduleRoutes = require("./routes/examScheduleRoutes");
 const holidayRoutes = require('./routes/holidayRoutes');
+const paymentRoutes = require('./routes/payment'); 
 
 // Mount API routes
 app.use("/api/colleges", collegeRoutes);
@@ -44,6 +53,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/results", resultsRoutes);
 app.use("/api/exam-schedules", examScheduleRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Error handling middleware
 app.use((error, req, res, next) => {

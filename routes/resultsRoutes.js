@@ -38,7 +38,7 @@ router.get("/student-marks", async (req, res) => {
   }
 });
 
-//batch create/merge one component marks (initial entry)
+//batch create/merge one component marks
 router.post("/create", async (req, res) => {
   try {
     const { collegeId, program, semester, subject, teacherId, component, maxMarks, results } = req.body;

@@ -57,5 +57,35 @@ router.get("/:id/semesters/:sem/subjects", async (req, res) => {
   }
 });
 
+// Create program
+router.post('/', async (req, res) => {
+  try {
+    const { _id, programName, semesters = [] } = req.body;
+    if (!_id || !programName) return res.status(400).json({ error: 'Missing _id or programName' });
+    const exists = await Program.findById(_id);
+    if (exists) return res.status(409).json({ error: 'Program already exists' });
+    const doc = await Program.create({ _id, programName, semesters });
+    res.status(201).json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to create program' }); }
+});
+
+// Update program (including semesters/subjectIds)
+router.put('/:id', async (req, res) => {
+  try {
+    const { programName, semesters } = req.body;
+    const doc = await Program.findByIdAndUpdate(req.params.id, { programName, semesters }, { new: true, runValidators: true });
+    if (!doc) return res.status(404).json({ error: 'Program not found' });
+    res.json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to update program' }); }
+});
+
+// Delete program
+router.delete('/:id', async (req, res) => {
+  try {
+    const doc = await Program.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Program not found' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Failed to delete program' }); }
+});
 
 module.exports = router;

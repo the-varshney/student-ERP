@@ -19,9 +19,6 @@ router.post("/get-students", async (req, res) => {
       });
     }
 
-    console.log(`MongoDB filtering - Program: ${teacherProgram}, semester: ${selectedSemester}`);
-    console.log(`Received ${firebaseStudents.length} students from Firebase`);
-
     // Extract firebaseIds from the Firebase filtered students
     const firebaseIds = firebaseStudents.map(student => student.firebaseId);
 
@@ -33,8 +30,6 @@ router.post("/get-students", async (req, res) => {
     }).populate('department', 'departmentName')
       .populate('program', 'programName')
       .lean();
-
-    // console.log(`Found ${mongoStudents.length} matching students in MongoDB`);
 
     // Merge Firebase and MongoDB data
     const mergedStudents = mongoStudents

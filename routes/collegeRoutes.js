@@ -40,7 +40,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-
 router.get("/:id/departments", async (req, res) => {
   try {
     const college = await College.findById(req.params.id);
@@ -49,7 +48,7 @@ router.get("/:id/departments", async (req, res) => {
       return res.json([]);
     }
 
-    // Extract real deptIds
+    // Extract deptIds
     const deptIds = college.departments.map(d => d.deptId);
 
     // Fetch department docs by ID
@@ -60,5 +59,37 @@ router.get("/:id/departments", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch departments" });
   }
 });
+
+// Create college
+router.post('/', async (req, res) => {
+  try {
+    const { _id, name, address, departments = [] } = req.body;
+    if (!_id || !name || !address) return res.status(400).json({ error: 'Missing _id, name or address' });
+    const exists = await College.findById(_id);
+    if (exists) return res.status(409).json({ error: 'College already exists' });
+    const doc = await College.create({ _id, name, address, departments });
+    res.status(201).json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to create college' }); }
+});
+
+// Update college
+router.put('/:id', async (req, res) => {
+  try {
+    const { name, address, departments } = req.body;
+    const doc = await College.findByIdAndUpdate(req.params.id, { name, address, departments }, { new: true, runValidators: true });
+    if (!doc) return res.status(404).json({ error: 'College not found' });
+    res.json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to update college' }); }
+});
+
+// Delete college
+router.delete('/:id', async (req, res) => {
+  try {
+    const doc = await College.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'College not found' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Failed to delete college' }); }
+});
+
 
 module.exports = router;

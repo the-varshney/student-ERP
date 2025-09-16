@@ -27,6 +27,38 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// GET programs for a department (without collegeId)
+router.get("/:deptId/programs", async (req, res) => {
+  try {
+    const { deptId } = req.params;
+
+    // Find all colleges that include this department
+    const colleges = await College.find({ "departments.deptId": deptId });
+    if (!colleges || colleges.length === 0) {
+      return res.status(404).json({ error: "No college found with this department" });
+    }
+
+    // Collect all program IDs offered in this department (across all colleges)
+    const programIds = colleges.flatMap(c => {
+      const dept = c.departments.find(d => d.deptId === deptId);
+      return dept ? dept.offeredProgramIds : [];
+    });
+
+    if (!programIds || programIds.length === 0) {
+      return res.json([]); // no programs found
+    }
+
+    // Fetch program details
+    const programs = await Program.find({ _id: { $in: programIds } });
+    res.json(programs);
+
+  } catch (err) {
+    console.error("Error fetching programs by department:", err);
+    res.status(500).json({ error: "Failed to fetch programs for department" });
+  }
+});
+
+
 // GET programs for a department in a specific college
 router.get("/:collegeId/:deptId/programs", async (req, res) => {
   try {
@@ -57,6 +89,38 @@ router.get("/:collegeId/:deptId/programs", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch programs" });
   }
 });
+
+// Create department
+router.post('/', async (req, res) => {
+  try {
+    const { _id, departmentName } = req.body;
+    if (!_id || !departmentName) return res.status(400).json({ error: 'Missing _id or departmentName' });
+    const exists = await Department.findById(_id);
+    if (exists) return res.status(409).json({ error: 'Department already exists' });
+    const doc = await Department.create({ _id, departmentName });
+    res.status(201).json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to create department' }); }
+});
+
+// Update department
+router.put('/:id', async (req, res) => {
+  try {
+    const { departmentName } = req.body;
+    const doc = await Department.findByIdAndUpdate(req.params.id, { departmentName }, { new: true, runValidators: true });
+    if (!doc) return res.status(404).json({ error: 'Department not found' });
+    res.json(doc);
+  } catch (e) { res.status(500).json({ error: 'Failed to update department' }); }
+});
+
+// Delete department
+router.delete('/:id', async (req, res) => {
+  try {
+    const doc = await Department.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Department not found' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Failed to delete department' }); }
+});
+
 
 
 module.exports = router;
