@@ -1,21 +1,21 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 import {
   Drawer,
   List,
-  ListItem,
   ListItemIcon,
   ListItemText,
   Divider,
   Typography,
   Box,
   useMediaQuery,
+  ListItemButton,
 } from "@mui/material";
+import { useTheme, alpha } from "@mui/material/styles";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeContext } from "../context/ThemeContext";
 
-// Icons
 import HomeIcon from "@mui/icons-material/Home";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import SchoolIcon from "@mui/icons-material/School";
@@ -29,48 +29,66 @@ import LockResetIcon from "@mui/icons-material/LockReset";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import SettingsIcon from "@mui/icons-material/Settings";
 
-const Menu = ({ role, open, onClose }) => {
-  const { mode } = useContext(ThemeContext);
-  const isMobile = useMediaQuery("(max-width: 768px)");
-
-  // Menu items according to role
-  const studentMenuItems = [
+const roleItems = {
+  Student: [
     { label: "Home", link: "/home", icon: <HomeIcon /> },
     { label: "Attendance", link: "/attendance", icon: <CalendarTodayIcon /> },
     { label: "Results", link: "/result", icon: <SchoolIcon /> },
     { label: "Assignments", link: "/assignments", icon: <AssignmentIcon /> },
-    { label: "Timetable & Syllabus", link: "/timetable-syllabus", icon: <ScheduleIcon /> },
+    { label: "Timetable & Syllabus", link: "/timetable_syllabus", icon: <ScheduleIcon /> },
     { label: "Notes", link: "/notes", icon: <NoteAddIcon /> },
-  ];
-
-  const teacherMenuItems = [
-    { label: "Home", link: "/teacher/home", icon: <HomeIcon /> },
+  ],
+  Teacher: [
+    { label: "Home", link: "/teacher", icon: <HomeIcon /> },
     { label: "Take Attendance", link: "/teacher/attendance", icon: <CalendarTodayIcon /> },
     { label: "View Schedule", link: "/teacher/schedule", icon: <ScheduleIcon /> },
     { label: "Assignment Management", link: "/teacher/assignments", icon: <AssignmentIcon /> },
     { label: "Upload Notes", link: "/teacher/upload-notes", icon: <NoteAddIcon /> },
     { label: "Faculty Chat", link: "/teacher/chat", icon: <ChatIcon /> },
-  ];
-
-  const adminMenuItems = [
-    { label: "Home", link: "/admin/home", icon: <HomeIcon /> },
+  ],
+  Admin: [
+    { label: "Home", link: "/admin", icon: <HomeIcon /> },
     { label: "Add Teachers", link: "/admin/add-teacher", icon: <PersonAddIcon /> },
-    { label: "Login as User", link: "/admin/user-details", icon: <LoginIcon /> },
-    { label: "Reset Password", link: "/admin/reset-password", icon: <LockResetIcon /> },
-    { label: "DB Queries", link: "/admin/executeDB", icon: <TerminalIcon /> },
-  ];
+    { label: "Users Details", link: "/admin/user-details", icon: <LoginIcon /> },
+    { label: "Uni Library", link: "/admin/library", icon: <LockResetIcon /> },
+    { label: "DB Workbench", link: "/admin/executeDB", icon: <TerminalIcon /> },
+  ],
+};
 
-  // Animation variants
-  const drawerVariants = {
-    hidden: { x: "-100%", opacity: 0 },
-    visible: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
-    exit: { x: "-100%", opacity: 0, transition: { duration: 0.2, ease: "easeIn" } },
-  };
+const drawerVariants = {
+  hidden: { x: "-100%", opacity: 0 },
+  visible: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { x: "-100%", opacity: 0, transition: { duration: 0.2, ease: "easeIn" } },
+};
 
-  const itemVariants = {
-    hidden: { scale: 0.9, opacity: 0 },
-    visible: { scale: 1, opacity: 1, transition: { duration: 0.2 } },
-  };
+const itemVariants = {
+  hidden: { scale: 0.95, opacity: 0 },
+  visible: (i) => ({ scale: 1, opacity: 1, transition: { delay: 0.02 * i, duration: 0.18 } }),
+};
+
+const Menu = ({ role, open, onClose }) => {
+  const { mode } = useContext(ThemeContext);
+  const theme = useTheme();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isDark = theme.palette.mode === "dark";
+
+  const items = useMemo(() => roleItems[role] || roleItems.Student, [role]);
+
+  const drawerBg =
+    mode === "default"
+      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.60)} 0%, ${alpha(
+          theme.palette.secondary.main,
+          0.35
+        )} 100%)`
+      : isDark
+      ? "rgba(17, 25, 40, 0.55)"
+      : "rgba(255, 255, 255, 0.60)";
+
+  const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+  const hoverBg = alpha(theme.palette.primary.main, 0.08);
+  const hoverGlow = `0 0 10px ${alpha(theme.palette.primary.main, 0.35)}`;
+  const iconColor = theme.palette.primary.main;
+  const textColor = theme.palette.text.primary;
 
   return (
     <AnimatePresence>
@@ -81,14 +99,14 @@ const Menu = ({ role, open, onClose }) => {
           onClose={onClose}
           PaperProps={{
             sx: {
-              width: isMobile ? 200 : 250, 
-              background: mode === "default"
-                ? "linear-gradient(135deg, hsl(220, 100%, 71%) 0%, hsla(265, 100%, 70%, 0.28) 100%)"
-                : "hsl(219, 100%, 93.90%)",
-              borderRadius: "0 8px 8px 0",
-              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-              backdropFilter: "blur(10px)",
-              zIndex: 1200,
+              width: isMobile ? 220 : 272,
+              background: drawerBg,
+              backdropFilter: "saturate(180%) blur(12px)",
+              WebkitBackdropFilter: "saturate(180%) blur(12px)",
+              borderRight: `1px solid ${borderColor}`,
+              borderRadius: "0 12px 12px 0",
+              boxShadow: isDark ? "0 10px 24px rgba(0,0,0,0.35)" : "0 8px 20px rgba(0,0,0,0.08)",
+              overflow: "hidden",
             },
           }}
         >
@@ -98,285 +116,111 @@ const Menu = ({ role, open, onClose }) => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            sx={{ height: "100%" }}
+            sx={{ height: "100%", display: "flex", flexDirection: "column" }}
           >
+            {/* Title */}
             <Box sx={{ p: 2, textAlign: "center" }}>
               <Typography
                 variant="h6"
                 sx={{
-                  fontWeight: "bold",
-                  color: mode === "default" ? "#fff" : "#333",
-                  background: role === "Student"
-                    ? "linear-gradient(45deg, #87CEEB, #ADD8E6)"
-                    : role === "Teacher"
-                    ? "linear-gradient(45deg, #90EE90, #98FB98)"
-                    : "linear-gradient(45deg, #d32f2f, #f44336)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
+                  fontWeight: 1000,
+                  lineHeight: 2.3,
+                  fontSize: '1.4rem',
+                  backgroundImage: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  backgroundClip: "text",
+                  color: `${theme.palette.contrastText}`,
                 }}
               >
-                {role} Menu
+                {`${role} Menu`}
               </Typography>
             </Box>
-            <Divider
-              sx={{
-                bgcolor: role === "Student"
-                  ? "linear-gradient(90deg, #87CEEB, #ADD8E6)"
-                  : role === "Teacher"
-                  ? "linear-gradient(90deg, #90EE90, #98FB98)"
-                  : "linear-gradient(90deg, #d32f2f, #b71c1c)",
-                height: 2,
-                mx: 2,
-              }}
-            />
 
-            <List sx={{ p: 1 }}>
-              {role === "Student" &&
-                studentMenuItems.map((item, index) => (
-                  <ListItem
-                    button
-                    component={motion.div}
-                    key={item.label}
+            <Divider sx={{ mx: 2, height: 2, bgcolor: alpha(theme.palette.primary.main, 0.25) }} />
+
+            {/* Menu options */}
+            <List sx={{ p: 1, flex: 1 }}>
+              {items.map((item, index) => (
+                <Box
+                  key={item.label}
+                  component={motion.div}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  custom={index}
+                  sx={{ borderRadius: 1, mb: 0.5 }}
+                >
+                  <Link
+                    to={item.link}
+                    onClick={onClose}
+                    style={{ textDecoration: "none", width: "100%", display: "block" }}
+                  >
+                    <ListItemButton
+                      sx={{
+                        borderRadius: 1,
+                        "&:hover": {
+                          backgroundColor: hoverBg,
+                          transform: "scale(1.02)",
+                          boxShadow: hoverGlow,
+                        },
+                        transition: "all 0.2s ease-in-out",
+                      }}
+                    >
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 40,
+                          color: iconColor,
+                          transition: "transform 0.3s ease-in-out",
+                          "&:hover": { transform: "rotate(8deg)" },
+                        }}
+                      >
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Typography sx={{ color: textColor, fontWeight: 500 }}>{item.label}</Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  </Link>
+                </Box>
+              ))}
+
+              <Divider sx={{ mx: 2, my: 1, height: 2, bgcolor: alpha(theme.palette.primary.main, 0.25) }} />
+
+              {/* Settings */}
+              <Box component={motion.div} variants={itemVariants} initial="hidden" animate="visible">
+                <Link
+                  to="/settings"
+                  onClick={onClose}
+                  style={{ textDecoration: "none", width: "100%", display: "block" }}
+                >
+                  <ListItemButton
                     sx={{
                       borderRadius: 1,
-                      mb: 0.5,
                       "&:hover": {
-                        backgroundColor: role === "Student"
-                          ? "rgba(173, 216, 230, 0.1)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.1)"
-                          : "rgba(255, 235, 238, 0.1)",
+                        backgroundColor: hoverBg,
                         transform: "scale(1.02)",
-                        boxShadow: `0 0 10px ${role === "Student"
-                          ? "rgba(173, 216, 230, 0.3)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.3)"
-                          : "rgba(211, 47, 47, 0.3)"}`,
+                        boxShadow: hoverGlow,
                       },
+                      transition: "all 0.2s ease-in-out",
                     }}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    custom={index}
                   >
-                    <Link to={item.link} style={{ textDecoration: "none", width: "100%" }} onClick={onClose}>
-                      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                        <ListItemIcon
-                          sx={{
-                            color: role === "Student"
-                              ? "#87CEEB"
-                              : role === "Teacher"
-                              ? "#90EE90"
-                              : "#d32f2f",
-                            transition: "transform 0.3s ease-in-out",
-                            "&:hover": { transform: "rotate(10deg)" },
-                          }}
-                        >
-                          {item.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              sx={{
-                                color: mode === "default" ? "#fff" : "#333",
-                                fontWeight: 500,
-                              }}
-                            >
-                              {item.label}
-                            </Typography>
-                          }
-                        />
-                      </Box>
-                    </Link>
-                  </ListItem>
-                ))}
-
-              {role === "Teacher" &&
-                teacherMenuItems.map((item, index) => (
-                  <ListItem
-                    button
-                    component={motion.div}
-                    key={item.label}
-                    sx={{
-                      borderRadius: 1,
-                      mb: 0.5,
-                      "&:hover": {
-                        backgroundColor: role === "Student"
-                          ? "rgba(173, 216, 230, 0.1)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.1)"
-                          : "rgba(255, 235, 238, 0.1)",
-                        transform: "scale(1.02)",
-                        boxShadow: `0 0 10px ${role === "Student"
-                          ? "rgba(173, 216, 230, 0.3)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.3)"
-                          : "rgba(211, 47, 47, 0.3)"}`,
-                      },
-                    }}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    custom={index}
-                  >
-                    <Link to={item.link} style={{ textDecoration: "none", width: "100%" }} onClick={onClose}>
-                      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                        <ListItemIcon
-                          sx={{
-                            color: role === "Student"
-                              ? "#87CEEB"
-                              : role === "Teacher"
-                              ? "#90EE90"
-                              : "#d32f2f",
-                            transition: "transform 0.3s ease-in-out",
-                            "&:hover": { transform: "rotate(10deg)" },
-                          }}
-                        >
-                          {item.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              sx={{
-                                color: mode === "default" ? "#fff" : "#333",
-                                fontWeight: 500,
-                              }}
-                            >
-                              {item.label}
-                            </Typography>
-                          }
-                        />
-                      </Box>
-                    </Link>
-                  </ListItem>
-                ))}
-
-              {role === "Admin" &&
-                adminMenuItems.map((item, index) => (
-                  <ListItem
-                    button
-                    component={motion.div}
-                    key={item.label}
-                    sx={{
-                      borderRadius: 1,
-                      mb: 0.5,
-                      "&:hover": {
-                        backgroundColor: role === "Student"
-                          ? "rgba(173, 216, 230, 0.1)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.1)"
-                          : "rgba(255, 235, 238, 0.1)",
-                        transform: "scale(1.02)",
-                        boxShadow: `0 0 10px ${role === "Student"
-                          ? "rgba(173, 216, 230, 0.3)"
-                          : role === "Teacher"
-                          ? "rgba(144, 238, 144, 0.3)"
-                          : "rgba(211, 47, 47, 0.3)"}`,
-                      },
-                    }}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    custom={index}
-                  >
-                    <Link to={item.link} style={{ textDecoration: "none", width: "100%" }} onClick={onClose}>
-                      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                        <ListItemIcon
-                          sx={{
-                            color: role === "Student"
-                              ? "#87CEEB"
-                              : role === "Teacher"
-                              ? "#90EE90"
-                              : "#d32f2f",
-                            transition: "transform 0.3s ease-in-out",
-                            "&:hover": { transform: "rotate(10deg)" },
-                          }}
-                        >
-                          {item.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              sx={{
-                                color: mode === "default" ? "#fff" : "#333",
-                                fontWeight: 500,
-                              }}
-                            >
-                              {item.label}
-                            </Typography>
-                          }
-                        />
-                      </Box>
-                    </Link>
-                  </ListItem>
-                ))}
-
-              <Divider
-                sx={{
-                  bgcolor: role === "Student"
-                    ? "linear-gradient(90deg, #87CEEB, #ADD8E6)"
-                    : role === "Teacher"
-                    ? "linear-gradient(90deg, #90EE90, #98FB98)"
-                    : "linear-gradient(90deg, #d32f2f, #b71c1c)",
-                  height: 2,
-                  mx: 2,
-                }}
-              />
-
-              <ListItem
-                button
-                component={motion.div}
-                sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
-                  "&:hover": {
-                    backgroundColor: role === "Student"
-                      ? "rgba(173, 216, 230, 0.1)"
-                      : role === "Teacher"
-                      ? "rgba(144, 238, 144, 0.1)"
-                      : "rgba(255, 235, 238, 0.1)",
-                    transform: "scale(1.02)",
-                    boxShadow: `0 0 10px ${role === "Student"
-                      ? "rgba(173, 216, 230, 0.3)"
-                      : role === "Teacher"
-                      ? "rgba(144, 238, 144, 0.3)"
-                      : "rgba(211, 47, 47, 0.3)"}`,
-                  },
-                }}
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <Link to="/settings" style={{ textDecoration: "none", width: "100%" }} onClick={onClose}>
-                  <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
                     <ListItemIcon
                       sx={{
-                        color: role === "Student"
-                          ? "#87CEEB"
-                          : role === "Teacher"
-                          ? "#90EE90"
-                          : "#d32f2f",
+                        minWidth: 40,
+                        color: iconColor,
                         transition: "transform 0.3s ease-in-out",
-                        "&:hover": { transform: "rotate(10deg)" },
+                        "&:hover": { transform: "rotate(8deg)" },
                       }}
                     >
                       <SettingsIcon />
                     </ListItemIcon>
                     <ListItemText
-                      primary={
-                        <Typography
-                          sx={{
-                            color: mode === "default" ? "#fff" : "#333",
-                            fontWeight: 500,
-                          }}
-                        >
-                          Settings
-                        </Typography>
-                      }
+                      primary={<Typography sx={{ color: textColor, fontWeight: 500 }}>Settings</Typography>}
                     />
-                  </Box>
+                  </ListItemButton>
                 </Link>
-              </ListItem>
+              </Box>
             </List>
           </Box>
         </Drawer>

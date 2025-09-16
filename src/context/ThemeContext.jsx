@@ -1,18 +1,19 @@
-import React, { createContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useState, useMemo, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { ThemeProvider } from '@mui/material/styles';
 import { themes } from '../components/theme';
+import AuthContext from './AuthContext';
 
 export const ThemeContext = createContext();
 
 export const ThemeProviderWrapper = ({ children }) => {
+  const { role } = useContext(AuthContext); 
   // Initialize theme from sessionStorage or default to 'default'
   const [mode, setMode] = useState(() => {
     const savedMode = sessionStorage.getItem('themeMode');
     return savedMode && themes[savedMode] ? savedMode : 'default';
   });
 
-  // Persist theme to sessionStorage whenever mode changes
   useEffect(() => {
     sessionStorage.setItem('themeMode', mode);
   }, [mode]);
@@ -27,18 +28,29 @@ export const ThemeProviderWrapper = ({ children }) => {
     }
   };
 
-  // Function to reset theme to default (used on logout)
+  // Function to reset theme to default
   const resetTheme = () => {
     setMode('default');
     sessionStorage.removeItem('themeMode');
   };
 
-  // Memoize theme to prevent unnecessary re-renders
-  const theme = useMemo(() => themes[mode], [mode]);
+  const selectedTheme = useMemo(() => {
+    let userRole = role;
+
+    // Handle role mapping to theme keys
+    if (userRole === 'unverified' || userRole === 'verified') {
+      userRole = 'student'; 
+    } else if (userRole === 'CollegeAssociate') {
+      userRole = 'teacher';
+    }
+
+    const themeKey = role ? userRole.toLowerCase() : 'student'; // Default to student if no role
+    return themes[mode][themeKey] || themes[mode]['student']; //
+  }, [mode, role]);
 
   return (
     <ThemeContext.Provider value={{ mode, toggleTheme, resetTheme }}>
-      <ThemeProvider theme={theme}>{children}</ThemeProvider>
+      <ThemeProvider theme={selectedTheme}>{children}</ThemeProvider>
     </ThemeContext.Provider>
   );
 };

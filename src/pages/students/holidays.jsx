@@ -2,8 +2,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box, Container, Typography, Card, CardContent, Stack, FormControl, InputLabel, Select, MenuItem,
-  Button, IconButton, Tooltip, Alert, CircularProgress, Tabs, Tab, Table, TableHead, TableBody,
-  TableRow, TableCell, TableContainer, Paper, Chip, Divider
+  Button, IconButton, Alert, CircularProgress, Tabs, Tab, Table, TableHead, TableBody,
+  TableRow, TableCell, TableContainer, Paper, Chip
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -18,6 +18,8 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import SecondaryHeader from '../../components/secondaryHeader';
+import { HeaderBackButton } from '../../components/header';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -30,21 +32,48 @@ const TYPES = ['Gazetted', 'Restricted', 'Observance'];
 
 const formatDate = (d) => (d ? dayjs(d).tz(TZ).format('DD/MM/YYYY') : '—');
 
+const NS = 'erp';
+const VER = 'v1';
+const STORE = typeof window !== 'undefined' ? window.localStorage : null;
+const LAST_UID_KEY = `${NS}:lastUid:${VER}`;
+const key = (uid, name) => `${NS}:${uid}:${name}:${VER}`;
+
+const readCachedStudent = () => {
+  if (!STORE) return null;
+  const uid = STORE.getItem(LAST_UID_KEY);
+  if (!uid) return null;
+  const raw = STORE.getItem(key(uid, 'student'));
+  if (!raw) return null;
+  try {
+    const payload = JSON.parse(raw);
+    return payload?.v || null; 
+  } catch {
+    return null;
+  }
+};
+
 const Holidays = () => {
-  const [tab, setTab] = useState('all'); // 'all' | 'upcoming'
+  const [tab, setTab] = useState('all'); 
   const [loading, setLoading] = useState(true);
   const [loadMsg, setLoadMsg] = useState('Loading holidays…');
   const [error, setError] = useState('');
 
-  // Filters
+  const [student, setStudent] = useState(null);
+
   const nowTz = dayjs().tz(TZ);
   const [year, setYear] = useState(nowTz.year());
-  const [month, setMonth] = useState(''); 
-  const [type, setType] = useState(''); 
-  const [startDate, setStartDate] = useState(null); 
-  const [endDate, setEndDate] = useState(null);     
-  const [rows, setRows] = useState([]);       // list of data
-  const [upcoming, setUpcoming] = useState([]); 
+  const [month, setMonth] = useState('');
+  const [type, setType] = useState('');
+  const [startDate, setStartDate] = useState(null); // dayjs
+  const [endDate, setEndDate] = useState(null);     // dayjs
+  const [rows, setRows] = useState([]);             // list of data
+  const [upcoming, setUpcoming] = useState([]);
+
+  // read cached student once
+  useEffect(() => {
+    const s = readCachedStudent();
+    setStudent(s || null);
+  }, []);
 
   const years = useMemo(() => {
     const base = nowTz.year();
@@ -55,17 +84,19 @@ const Holidays = () => {
 
   const buildAllParams = useCallback(() => {
     const params = {};
+    if (student?.collegeId) params.collegeId = String(student.collegeId);
+
     if (type) params.type = type;
     const hasRange = !!startDate || !!endDate;
     if (hasRange) {
       if (startDate?.isValid?.()) params.start = startDate.tz(TZ).format('YYYY-MM-DD');
       if (endDate?.isValid?.()) params.end = endDate.tz(TZ).format('YYYY-MM-DD');
-      return params; 
+      return params;
     }
     if (year) params.year = year;
     if (month) params.month = month;
     return params;
-  }, [type, startDate, endDate, year, month]);
+  }, [student?.collegeId, type, startDate, endDate, year, month]);
 
   const fetchAll = useCallback(async () => {
     setError('');
@@ -75,7 +106,6 @@ const Holidays = () => {
       const params = buildAllParams();
       const res = await axios.get(`${API_BASE_URL}/api/holidays`, { params });
       const list = Array.isArray(res.data) ? res.data : [];
-      // sort by date ascending
       list.sort((a, b) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
       setRows(list);
     } catch (e) {
@@ -85,7 +115,7 @@ const Holidays = () => {
       setLoading(false);
       setLoadMsg('');
     }
-  }, [API_BASE_URL, buildAllParams]);
+  }, [buildAllParams]);
 
   const fetchUpcoming = useCallback(async () => {
     setError('');
@@ -93,9 +123,10 @@ const Holidays = () => {
     setLoadMsg('Loading upcoming holidays…');
     try {
       const from = dayjs().tz(TZ).format('YYYY-MM-DD');
-      const res = await axios.get(`${API_BASE_URL}/api/holidays/upcoming`, {
-        params: { from }
-      });
+      const params = { from };
+      if (student?.collegeId) params.collegeId = String(student.collegeId);
+
+      const res = await axios.get(`${API_BASE_URL}/api/holidays/upcoming`, { params });
       const list = Array.isArray(res.data) ? res.data : [];
       list.sort((a, b) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
       setUpcoming(list);
@@ -106,7 +137,7 @@ const Holidays = () => {
       setLoading(false);
       setLoadMsg('');
     }
-  }, [API_BASE_URL]);
+  }, [student?.collegeId]);
 
   const refresh = useCallback(async () => {
     if (tab === 'all') {
@@ -125,7 +156,7 @@ const Holidays = () => {
     if (tab === 'all') {
       fetchAll();
     }
-  }, [year, month, type, startDate, endDate]);
+  }, [year, month, type, startDate, endDate, student?.collegeId]);
 
   // Reset filters helper
   const resetFilters = () => {
@@ -191,24 +222,16 @@ const Holidays = () => {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ backgroundColor: (t) => t.palette.grey, minHeight: '100vh', py: 4 }}>
         <Container maxWidth="xl">
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="center" spacing={2} 
-                 sx={{ mb: 2 }}>
-            <Stack direction={"row"} alignItems="center" spacing={1}>
-            <EventIcon fontSize = "large" color="primary" />
-            <Typography variant="h4" fontWeight="bold" color="primary.dark">
-              Holidays
-            </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Tooltip title="Refresh">
-                <span>
-                  <IconButton color="primary" onClick={refresh} disabled={loading}>
+          <SecondaryHeader
+                    title="Holidays"
+                    leftArea={<><HeaderBackButton /><EventIcon fontSize="large" color="primary" /></>}
+                    rightArea={
+                      <IconButton color="primary" onClick={refresh} disabled={loading}>
                     <RefreshIcon />
                   </IconButton>
-                </span>
-              </Tooltip>
-            </Stack>
-          </Stack>
+                    }
+                    
+                  />
 
           {/* Tabs: All or Upcoming */}
           <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -295,8 +318,9 @@ const Holidays = () => {
 
           {!loading && !error && (
             <>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: 'wrap' }}>
                 <Chip label={`${dataForTab.length} holidays`} size="small" />
+                {student?.collegeId && <Chip label={`College: ${student.collegeId}`} size="small" variant="outlined" />}
                 {tab === 'all' && (
                   <>
                     {type && <Chip label={`Type: ${type}`} size="small" color="primary" variant="outlined" />}

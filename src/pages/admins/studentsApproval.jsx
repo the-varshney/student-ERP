@@ -1,43 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useMemo, useState, useCallback, useContext } from "react";
-import {
-  Box,
-  Card,
-  Typography,
-  Stack,
-  TextField,
-  Button,
-  Chip,
-  Divider,
-  Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  Tooltip,
-  CircularProgress,
-  Snackbar,
-  useTheme,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Paper,
-  AppBar,
-  Container,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
+import { Box, Card, Typography, Stack, TextField, Button, Chip, Divider, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Tooltip, CircularProgress, Snackbar, useTheme, FormControl, InputLabel, Select, MenuItem, Paper, AppBar, Container, IconButton,
 } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import CheckIcon from "@mui/icons-material/Check";
 import CancelIcon from "@mui/icons-material/Cancel";
+import VerifiedIcon from "@mui/icons-material/VerifiedUser";
 import dayjs from "dayjs";
 import axios from "axios";
 import { db } from "../../firebase/Firebase";
@@ -45,9 +13,11 @@ import { collection, query, where, getDocs, doc, updateDoc } from "firebase/fire
 import AuthContext from "../../context/AuthContext";
 import { ThemeContext } from "../../context/ThemeContext";
 import PropTypes from "prop-types";
-import { HamburgerMenu, UTSLogo, UserProfile } from '../../components/header';
 
-// Cache
+import SecondaryHeader from "../../components/secondaryHeader";
+import { HeaderBackButton } from "../../components/header";
+import StudentsGrid from "../../components/table";
+
 const CACHE_TTL = 1000 * 60 * 60;
 const setCache = (key, data) => {
   localStorage.setItem(key, JSON.stringify({ data, expiry: Date.now() + CACHE_TTL }));
@@ -63,7 +33,6 @@ const getCache = (key) => {
   return parsed.data;
 };
 
-//Date Formatting Function
 function formatDOBForView(dobStr) {
   if (!dobStr) return "-";
   if (dayjs(dobStr).isValid()) {
@@ -76,7 +45,7 @@ function formatDOBForView(dobStr) {
   return dobStr || "-";
 }
 
-// Utility Functions for Department and Program Names
+// Functions for Department and Program Names
 function getDepartmentName(collegeId, deptId, departments) {
   const depts = departments[collegeId] || [];
   const dept = depts.find((d) => d.deptId === deptId);
@@ -109,10 +78,7 @@ function useVerifiedStudents(collegeFilter) {
       const data = querySnapshot.docs
         .map((doc) => {
           const docData = doc.data();
-          if (!doc.id || !docData.firebaseId || !docData.collegeId) {
-            console.warn(`Invalid student data: Missing id, firebaseId, or collegeId for doc ${doc.id}`, docData);
-            return null;
-          }
+          if (!doc.id || !docData.firebaseId || !docData.collegeId) return null;
           return {
             id: doc.id,
             firebaseId: docData.firebaseId,
@@ -162,8 +128,6 @@ export default function StudentApproval() {
     ? `${userDetails.firstName || 'Admin'} ${userDetails.lastName || ''}`.trim()
     : 'Admin';
 
-  const collegeName = userDetails?.collegeName || 'Institute';
-
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -178,13 +142,9 @@ export default function StudentApproval() {
   const [programs, setPrograms] = useState({});
   const [studentData, setStudentData] = useState({});
   const [studentDataLoading, setStudentDataLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  const accessDenied = userDetails?.role !== "Admin";
-
   const { rows, loading, err, refetch } = useVerifiedStudents(collegeFilter);
 
+  // load colleges, departments, programs for filters
   useEffect(() => {
     const fetchColleges = async () => {
       const cacheKey = "all-colleges";
@@ -200,7 +160,6 @@ export default function StudentApproval() {
           data = [];
         }
       }
-      console.log("Colleges fetched:", data);
       setColleges(data || []);
 
       const collegeDepts = {};
@@ -236,7 +195,7 @@ export default function StudentApproval() {
                     _id: progId,
                     programName: progId 
                   }));
-                  // fetching program details if available
+                  // fetching program details
                   try {
                     const progRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/departments/${college._id}/${dept._id}/programs`);
                     progs = progRes.data;
@@ -257,8 +216,6 @@ export default function StudentApproval() {
       );
       setDepartments(collegeDepts);
       setPrograms(collegeProgs);
-      console.log("Departments:", collegeDepts);
-      console.log("Programs:", collegeProgs);
     };
     fetchColleges();
   }, []);
@@ -283,7 +240,6 @@ export default function StudentApproval() {
           }
         })
       );
-      console.log("StudentData:", data);
       setStudentData(data);
       setStudentDataLoading(false);
     };
@@ -300,7 +256,7 @@ export default function StudentApproval() {
     }
   }, [collegeFilter]);
 
-  // Reset program filter when department changes
+  // Reset program filter when department change
   useEffect(() => {
     if (departmentFilter) {
       setProgramFilter("");
@@ -357,253 +313,209 @@ export default function StudentApproval() {
     }
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  if (accessDenied) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">Access denied. Only Admins can view this page.</Alert>
-      </Box>
+  // DataGrid rows
+    const gridRows = useMemo(() => {
+      return filtered.map((r) => {
+        const ac = studentData[r.id] || {};
+        return {
+          id: r.id,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          email: r.email || "-",
+          phone: r.phone || "-",
+          abcId: r.abcId || "-",
+          dobFormatted: formatDOBForView(r.dob),
+          gender: r.gender || "-",
+          collegeName: r.collegeName || "-",
+          profilePicUrl: r.profilePicUrl || "",
+          collegeId: r.collegeId,
+          enrollmentNo: ac.enrollmentNo || "-",
+          departmentName: getDepartmentName(r.collegeId, ac.department, departments),
+          programName: getProgramName(r.collegeId, ac.department, ac.program, programs),
+          semester: ac.semester || "-",
+          yearOfAdmission: ac.yearOfAdmission || "-",
+        };
+      });
+    }, [filtered, studentData, departments, programs]);
+  
+    // DataGrid columns
+    const columns = useMemo(
+      () => [
+        {
+          field: "photo",
+          headerName: "Photo",
+          width: 72,
+          sortable: false,
+          renderCell: (params) => (
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: theme.palette.background.paper,
+              }}
+              src={params.row.profilePicUrl}
+              alt={`${params.row.firstName || ""} ${params.row.lastName || ""}`.trim()}
+            />
+          ),
+        },
+        { field: "firstName", headerName: "First Name", flex: 1, minWidth: 160,},
+        { field: "lastName", headerName: "Last Name", flex: 1, minWidth: 160,},
+        { field: "email", headerName: "Email", flex: 1, minWidth: 180 },
+        { field: "phone", headerName: "Phone", width: 140 },
+        { field: "abcId", headerName: "ABC ID", width: 140 },
+        { field: "dobFormatted", headerName: "DOB", width: 130 },
+        { field: "gender", headerName: "Gender", width: 110 },
+        {field: "collegeName",headerName: "College", flex: 1, minWidth: 180,
+          renderCell: (params) => (
+            <Tooltip title={params.value || ""}>
+              <Chip label={params.value || "-"} size="small" variant="outlined" color="primary" sx={{ borderRadius: "4px", maxWidth: "100%" }}/>
+            </Tooltip>
+          ),
+        },
+        { field: "enrollmentNo", headerName: "Enrollment No", width: 160 },
+        { field: "departmentName", headerName: "Department", flex: 1, minWidth: 160 },
+        { field: "programName", headerName: "Program", flex: 1, minWidth: 160 },
+        { field: "semester", headerName: "Semester", width: 120 },
+        { field: "yearOfAdmission", headerName: "Admission Year", width: 140 },
+        { field: "actions", headerName: "Actions", width: 220, sortable: false, filterable: false,
+          renderCell: (params) => (
+            <Stack direction="row" spacing={1}>
+              <Button variant="contained" color="success" size="small" startIcon={<CheckIcon />} onClick={() => {
+                  const baseRow = filtered.find((x) => x.id === params.row.id);
+                  if (!baseRow) return;
+                  setSelected(baseRow);
+                  setConfirmType("approve");
+                  setConfirmOpen(true);
+                }}
+              >
+                Approve
+              </Button>
+              <Button variant="contained" color="error" size="small" startIcon={<CancelIcon />} onClick={() => {
+                  const baseRow = filtered.find((x) => x.id === params.row.id);
+                  if (!baseRow) return;
+                  setSelected(baseRow);
+                  setConfirmType("reject");
+                  setConfirmOpen(true);
+                }}
+              >
+                Reject
+              </Button>
+            </Stack>
+          ),
+        },
+      ],
+      [theme.palette.divider, theme.palette.background.paper, filtered]
     );
-  }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: mode === 'default'
-          ? `linear-gradient(135deg, ${theme.palette.red.main} 0%, ${theme.palette.red.focus} 100%)`
-          : mode === 'light'
-          ? theme.palette.red.main
-          : `linear-gradient(135deg, ${theme.palette.red.main} -25%, ${theme.palette.background.paper} 100%)`,
-        color: theme.palette.contrastText,
-        transition: 'background 0.5s ease-in-out',
-      }}
-    >
-      {/* Top Bar */}
-      <AppBar position="static" sx={{ background: theme.palette.red.main }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', p: 1 }}>
-          <Box sx={{ position: 'absolute', left: 60, top: 25, gap: 2, display: 'flex', alignItems: 'center' }}>
-            <HamburgerMenu />
-            <Typography variant="h6" sx={{ color: theme.palette.contrastText }}>
-              {collegeName}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'center', margin: '0 10px', position: 'relative', left: '39%' }}>
-            <UTSLogo />
-          </Box>
-
-          <Box sx={{ display: 'flex', alignContent: 'center', position: 'relative', right: '15px' }}>
-            <UserProfile />
-            <Typography sx={{ alignContent: 'center', color: theme.palette.contrastText }}>
-              {fullName}
-            </Typography>
-          </Box>
-        </Box>
-      </AppBar>
+    <Box sx={{ minHeight: "100vh", background: theme.palette.background.default }}>
+      <Container sx={{ pt: 2 }}>
+              <SecondaryHeader
+                title="Student Approvals"
+                leftArea={
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <HeaderBackButton size="small" />
+                    <VerifiedIcon color="primary" />
+                  </Stack>
+                }
+                elevation={0}
+                border
+                paperSx={{ p: { xs: 1.5, md: 2 }, borderRadius: 2, mb: 2, border: "1px solid", borderColor: "divider",}}
+              />
+            </Container>
 
       {/* Main Content */}
-      <Container sx={{ py: 4 }}>
-        <Box textAlign="center" mb={4}>
-          <Typography
-            variant="h3"
-            sx={{ fontWeight: 'bold', letterSpacing: '2px', color: theme.palette.contrastText }}
-          >
-            Student Approvals
-          </Typography>
-          <Typography
-            variant="subtitle1"
-            sx={{ color: theme.palette.contrastText, fontStyle: 'italic' }}
-          >
-            Students Approval Dashboard
-          </Typography>
-        </Box>
-
-        <Card sx={{ width: "100%", p: 3, borderRadius: 2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center" sx={{ mb: 3 }}>
-            <Typography variant="h5" fontWeight={750} sx={{ flex: 1, color: `${theme.palette.primary.main}` }}>
-              Students Data
-            </Typography>
-            <TextField
-              variant="outlined"
-              size="small"
-              placeholder="Search name, email, phone, ABC ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              sx={{ width: { xs: "100%", sm: 350 } }}
-            />
-            <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }}>
-              <InputLabel>College</InputLabel>
-              <Select label="College" value={collegeFilter} onChange={(e) => setCollegeFilter(e.target.value)}>
-                <MenuItem value="">All</MenuItem>
-                {colleges.length > 0 ? (
-                  colleges.map((college) => (
-                    <MenuItem key={college._id} value={college._id}>
-                      {college.name || `Unknown College (ID: ${college._id})`}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>No colleges available</MenuItem>
+      <Container sx={{ pb: 4 }}>
+              <Card sx={{ width: "100%", p: 3, borderRadius: 2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                  <Typography variant="h5" fontWeight={750} sx={{ flex: 1, color: `${theme.palette.primary.main}` }}>
+                    Students Data
+                  </Typography>
+      
+                  <TextField
+                    variant="outlined"
+                    size="small"
+                    placeholder="Search name, email, phone, ABC ID..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    sx={{ width: { xs: "100%", sm: 350 } }}
+                  />
+      
+                  <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }}>
+                    <InputLabel>College</InputLabel>
+                    <Select label="College" value={collegeFilter} onChange={(e) => setCollegeFilter(e.target.value)}>
+                      <MenuItem value="">All</MenuItem>
+                      {colleges.length > 0 ? (
+                        colleges.map((college) => (
+                          <MenuItem key={college._id} value={college._id}>
+                            {college.name || `Unknown College (ID: ${college._id})`}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No colleges available</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+      
+                  <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }} disabled={!collegeFilter}>
+                    <InputLabel>Department</InputLabel>
+                    <Select label="Department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+                      <MenuItem value="">All</MenuItem>
+                      {(departments[collegeFilter] || []).length > 0 ? (
+                        (departments[collegeFilter] || []).map((dept) => (
+                          <MenuItem key={dept._id} value={dept._id}>
+                            {dept.departmentName || `Unknown Department (ID: ${dept._id})`}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No departments available</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+      
+                  <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }} disabled={!departmentFilter}>
+                    <InputLabel>Program</InputLabel>
+                    <Select label="Program" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
+                      <MenuItem value="">All</MenuItem>
+                      {(programs[collegeFilter]?.[departmentFilter] || []).length > 0 ? (
+                        (programs[collegeFilter]?.[departmentFilter] || []).map((prog) => (
+                          <MenuItem key={prog._id} value={prog._id}>
+                            {prog.programName || `Unknown Program (ID: ${prog._id})`}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No programs available</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+      
+                  <Button variant="outlined" color="primary" onClick={refetch} disabled={loading} sx={{ minWidth: 120 }}>
+                    {loading ? <CircularProgress size={18} /> : "Refresh"}
+                  </Button>
+                </Stack>
+      
+                {err && (
+                  <Alert sx={{ mb: 3, borderRadius: 2 }} severity="error">
+                    {err}
+                  </Alert>
                 )}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }} disabled={!collegeFilter}>
-              <InputLabel>Department</InputLabel>
-              <Select label="Department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
-                <MenuItem value="">All</MenuItem>
-                {(departments[collegeFilter] || []).length > 0 ? (
-                  (departments[collegeFilter] || []).map((dept) => (
-                    <MenuItem key={dept._id} value={dept._id}>
-                      {dept.departmentName || `Unknown Department (ID: ${dept._id})`}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>No departments available</MenuItem>
-                )}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }} disabled={!departmentFilter}>
-              <InputLabel>Program</InputLabel>
-              <Select label="Program" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
-                <MenuItem value="">All</MenuItem>
-                {(programs[collegeFilter]?.[departmentFilter] || []).length > 0 ? (
-                  (programs[collegeFilter]?.[departmentFilter] || []).map((prog) => (
-                    <MenuItem key={prog._id} value={prog._id}>
-                      {prog.programName || `Unknown Program (ID: ${prog._id})`}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>No programs available</MenuItem>
-                )}
-              </Select>
-            </FormControl>
-            <Button variant="outlined" color="primary" onClick={refetch} disabled={loading} sx={{ minWidth: 120 }}>
-              {loading ? <CircularProgress size={18} /> : "Refresh"}
-            </Button>
-          </Stack>
-
-          {err && (
-            <Alert sx={{ mb: 3, borderRadius: 2 }} severity="error">
-              {err}
-            </Alert>
-          )}
-          <Paper elevation={1} sx={{ borderRadius: 2, overflow: "hidden" }}>
-            <TableContainer>
-              {loading || studentDataLoading ? (
-                <Box sx={{ p: 3, textAlign: "center" }}>
-                  <CircularProgress color="primary" />
-                </Box>
-              ) : (
-                <Table sx={{ minWidth: 650 }} aria-label="student approval table">
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800' }}>
-                      <TableCell>Photo</TableCell>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Phone</TableCell>
-                      <TableCell>ABC ID</TableCell>
-                      <TableCell>DOB</TableCell>
-                      <TableCell>Gender</TableCell>
-                      <TableCell>College</TableCell>
-                      <TableCell>Enrollment No</TableCell>
-                      <TableCell>Department</TableCell>
-                      <TableCell>Program</TableCell>
-                      <TableCell>Semester</TableCell>
-                      <TableCell>Admission Year</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
-                      <TableRow
-                        key={row.id}
-                        sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
-                      >
-                        <TableCell>
-                          <Avatar
-                            sx={{ width: 32, height: 32, border: "1px solid rgba(0,0,0,0.1)" }}
-                            src={row.profilePicUrl || ""}
-                            alt={`${row.firstName || ""} ${row.lastName || ""}`}
-                          />
-                        </TableCell>
-                        <TableCell>{(row.firstName || "") + " " + (row.lastName || "") || "-"}</TableCell>
-                        <TableCell>{row.email || "-"}</TableCell>
-                        <TableCell>{row.phone || "-"}</TableCell>
-                        <TableCell>{row.abcId || "-"}</TableCell>
-                        <TableCell>{formatDOBForView(row.dob)}</TableCell>
-                        <TableCell>{row.gender || "-"}</TableCell>
-                        <TableCell>
-                          <Tooltip title={row.collegeName || ""}>
-                            <Chip
-                              label={row.collegeName || "-"}
-                              size="small"
-                              variant="outlined"
-                              color="primary"
-                              sx={{ borderRadius: "4px", fontSize: "0.8rem", maxWidth: '100%' }}
-                            />
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>{studentData[row.id]?.enrollmentNo || "-"}</TableCell>
-                        <TableCell>{getDepartmentName(row.collegeId, studentData[row.id]?.department, departments)}</TableCell>
-                        <TableCell>{getProgramName(row.collegeId, studentData[row.id]?.department, studentData[row.id]?.program, programs)}</TableCell>
-                        <TableCell>{studentData[row.id]?.semester || "-"}</TableCell>
-                        <TableCell>{studentData[row.id]?.yearOfAdmission || "-"}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1}>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              size="small"
-                              startIcon={<CheckIcon />}
-                              onClick={() => {
-                                setSelected(row);
-                                setConfirmType("approve");
-                                setConfirmOpen(true);
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="error"
-                              size="small"
-                              startIcon={<CancelIcon />}
-                              onClick={() => {
-                                setSelected(row);
-                                setConfirmType("reject");
-                                setConfirmOpen(true);
-                              }}
-                            >
-                              Reject
-                            </Button>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TableContainer>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filtered.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </Paper>
-        </Card>
-      </Container>
+      
+                <StudentsGrid
+                  rows={gridRows}
+                  columns={columns}
+                  height="100%"
+                  initialPageSize={25}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  paperSx={{ borderRadius: 2 }}
+                  gridSx={{
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: theme.palette.mode === "light" ? "grey.100" : "grey.900",
+                    },
+                  }}
+                />
+              </Card>
+            </Container>
 
       <Dialog
         open={confirmOpen}

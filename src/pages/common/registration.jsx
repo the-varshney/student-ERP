@@ -17,6 +17,7 @@ import { auth, db, storage } from "../../firebase/Firebase";
 import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
 import AuthContext from "../../context/AuthContext";
+import {HeaderBackButton} from "../../components/header"
 
 function Register() {
   const { mode } = useContext(ThemeContext);
@@ -43,8 +44,6 @@ function Register() {
   const [messageType, setMessageType] = useState("");
   const [errors, setErrors] = useState({});
   const { role, loading } = useContext(AuthContext);
-
-
   const [collegesList, setCollegesList] = useState([]);
 
   // Refs for field navigation
@@ -58,7 +57,6 @@ function Register() {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
-
   // Error timeout refs
   const errorTimeouts = useRef({});
 
@@ -286,7 +284,6 @@ function Register() {
     const value = e.target.value;
     setGender(value);
     validateGender(value);
-    //Focus College after selection
     setTimeout(() => collegeRef.current && collegeRef.current.focus(), 0);
   };
 
@@ -294,7 +291,6 @@ function Register() {
     const value = e.target.value;
     setCollege(value);
     validateCollege(value);
-    // Focus Phone after selection
     setTimeout(() => phoneRef.current && phoneRef.current.focus(), 0);
   };
 
@@ -302,7 +298,6 @@ function Register() {
     let value = e.target.value.replace(/[^0-9]/g, "");
     if (value.length <= 10) {
       setPhone(value);
-      // Format for display
       if (value.length > 5) {
         setDisplayPhone(value.slice(0, 5) + "-" + value.slice(5));
       } else {
@@ -486,7 +481,8 @@ function Register() {
     >
       <Box sx={{ display: "flex", justifyContent: "center", minHeight: "100vh", p: 2 }}>
         <Card sx={{ width: "100%", maxWidth: 950, p: 4, borderRadius: 3 }}>
-          <Typography variant="h4" align="center" fontWeight="bold" gutterBottom>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            <HeaderBackButton/>
             Student Registration
           </Typography>
 
@@ -561,7 +557,6 @@ function Register() {
                 {errors.gender && <FormHelperText>{errors.gender}</FormHelperText>}
               </FormControl>
             </Stack>
-=
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
               <FormControl fullWidth error={!!errors.college}>
                 <InputLabel>College</InputLabel>
@@ -624,7 +619,7 @@ function Register() {
               )}
             </Stack>
 
-            {/* Preview dialog */}
+            {/* pic preview dialog */}
             <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)}>
               <DialogContent>
                 {profilePicPreview && (
@@ -674,7 +669,7 @@ function Register() {
                 fullWidth
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
-                onKeyDown={(e) => handleKeyDown(e, null)} // Last field
+                onKeyDown={(e) => handleKeyDown(e, null)}
                 error={!!errors.confirmPassword}
                 helperText={errors.confirmPassword}
                 inputProps={{ maxLength: 128 }}

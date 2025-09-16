@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Box, Container, Typography, Card, CardContent, Chip, IconButton,
   Alert, CircularProgress, Stack, FormControl, InputLabel, Select, MenuItem,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Tabs, Tab, Tooltip
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Tabs, Tab, Tooltip, useTheme
 } from '@mui/material';
 import {
   CalendarToday as CalendarIcon,
@@ -11,7 +11,7 @@ import {
   Assignment as AssignmentIcon,
   Schedule as ScheduleIcon,
   DoneAll as DoneAllIcon,
-  Upcoming as UpcomingIcon
+  Upcoming as UpcomingIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -24,17 +24,34 @@ dayjs.extend(customParseFormat);
 
 import { auth, db } from '../../firebase/Firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import SecondaryHeader from '../../components/secondaryHeader';
+import { HeaderBackButton } from '../../components/header';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const TZ = 'Asia/Kolkata';
 
-// Helpers  
-const parseTime12h = (str) => 
-                     (typeof str === 'string' && str.trim() ? dayjs(str.trim(), 'hh:mm A', true) : null);
-const combineDayAndTime = (d, t) =>  
-                          (d && t && d.isValid() && t.isValid() ? d.hour(t.hour()).minute(t.minute()).second(0).millisecond(0) : null);
-const computeEndDateTime = (dateDjs, startTimeDjs, endTimeStr, durationHours) => 
-  {
+const NS = 'erp';
+const VER = 'v1';
+const STORE = typeof window !== 'undefined' ? window.localStorage : null;
+const LAST_UID_KEY = `${NS}:lastUid:${VER}`;
+const key = (uid, name) => `${NS}:${uid}:${name}:${VER}`;
+const readCachedStudent = (uid) => {
+  try {
+    const raw = STORE?.getItem(key(uid, 'student'));
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    return payload?.v || null;
+  } catch {
+    return null;
+  }
+};
+
+// Helpers
+const parseTime12h = (str) =>
+  (typeof str === 'string' && str.trim() ? dayjs(str.trim(), 'hh:mm A', true) : null);
+const combineDayAndTime = (d, t) =>
+  (d && t && d.isValid() && t.isValid() ? d.hour(t.hour()).minute(t.minute()).second(0).millisecond(0) : null);
+const computeEndDateTime = (dateDjs, startTimeDjs, endTimeStr, durationHours) => {
   const startDT = combineDayAndTime(dateDjs, startTimeDjs);
   if (!startDT) return null;
   if (endTimeStr && String(endTimeStr).trim()) {
@@ -51,6 +68,7 @@ const formatDate = (d) => (d ? d.format('DD/MM/YYYY') : '—');
 const formatTime = (s) => (s && String(s).trim() ? String(s).trim() : '—');
 
 const ExamSchedule = () => {
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [loadMsg, setLoadMsg] = useState('Loading profile...');
   const [error, setError] = useState('');
@@ -78,24 +96,29 @@ const ExamSchedule = () => {
           setLoading(false);
           return;
         }
-        const sDoc = await getDoc(doc(db, 'Students', user.uid));
-        if (!sDoc.exists()) {
+
+        // Firestore/Mongo fetch with cache read
+        const uid = user.uid;
+        let merged = readCachedStudent(uid);
+        if (!merged && STORE) {
+          const lastUid = STORE.getItem(LAST_UID_KEY);
+          if (lastUid) merged = readCachedStudent(lastUid);
+        }
+        if (!merged) {
           setError('Student profile not found.');
           setLoading(false);
           return;
         }
-        const fb = sDoc.data();
-        setStudentFB(fb);
-        const response = await axios.get(`${API_BASE_URL}/api/attendance/student/${fb.firebaseId}`);
-        const mongoStudent = response.data.student || {};
-        setStudentInfo(mongoStudent);
+        setStudentFB(merged);
+        setStudentInfo(merged._academic || null);
+
         const currentYear = dayjs().tz(TZ).year();
         setFilters((p) => ({
           ...p,
-          collegeId: fb.collegeId || '',
-          departmentId: fb.department || '',
-          programId: fb.program || mongoStudent.program || '',
-          semester: String(mongoStudent.semester || fb.semester || ''),
+          collegeId: merged.collegeId || '',
+          departmentId: merged.department || merged.Department || '',
+          programId: merged.program || merged.Program || '',
+          semester: String(merged.Semester || merged.semester || ''),
           academicYear: `${currentYear - 1}-${currentYear}`,
           examMonthYear: dayjs().tz(TZ).format('MM/YYYY')
         }));
@@ -110,7 +133,10 @@ const ExamSchedule = () => {
     bootstrap();
   }, []);
 
-  const canQueryPublic = useMemo(() => Boolean(filters.collegeId && filters.programId && filters.semester), [filters]);
+  const canQueryPublic = useMemo(
+    () => Boolean(filters.collegeId && filters.programId && filters.semester),
+    [filters]
+  );
 
   const fetchPublished = useCallback(async () => {
     if (!studentFB) return;
@@ -120,7 +146,13 @@ const ExamSchedule = () => {
       if (canQueryPublic) {
         setLoadMsg('Loading published schedule...');
         const res = await axios.get(`${API_BASE_URL}/api/exam-schedules/public`, {
-          params: { collegeId: filters.collegeId, programId: filters.programId, semester: filters.semester, academicYear: filters.academicYear, examMonthYear: filters.examMonthYear }
+          params: {
+            collegeId: filters.collegeId,
+            programId: filters.programId,
+            semester: filters.semester,
+            academicYear: filters.academicYear,
+            examMonthYear: filters.examMonthYear
+          }
         });
         setPublishedDoc(res.data || null);
         setPublishedList([]);
@@ -164,15 +196,22 @@ const ExamSchedule = () => {
         date: dateDjs,
         startLabel: formatTime(ex.startTime || ex.time || ''),
         endLabel: formatTime(ex.endTime || ''),
-        durationLabel: typeof ex.durationHours === 'number' && ex.durationHours > 0 ? `${ex.durationHours} hours` : ex.duration || '',
+        durationLabel:
+          typeof ex.durationHours === 'number' && ex.durationHours > 0
+            ? `${ex.durationHours} hours`
+            : ex.duration || '',
         startDT,
         endDT
       };
     });
   };
 
-  const rows = useMemo(() => (publishedDoc ? docToRows(publishedDoc) : publishedList.flatMap(docToRows)), [publishedDoc, publishedList]);
-  const now = dayjs().tz(TZ); //use TZ for consistency
+  const rows = useMemo(
+    () => (publishedDoc ? docToRows(publishedDoc) : publishedList.flatMap(docToRows)),
+    [publishedDoc, publishedList]
+  );
+
+  const now = dayjs().tz(TZ);
   const { upcoming, completed } = useMemo(() => {
     const upcomingArr = rows.filter((r) => r.endDT && r.endDT.isAfter(now));
     const completedArr = rows.filter((r) => !r.endDT || !r.endDT.isAfter(now));
@@ -180,6 +219,7 @@ const ExamSchedule = () => {
     completedArr.sort((a, b) => (b.startDT || now).valueOf() - (a.startDT || now).valueOf());
     return { upcoming: upcomingArr, completed: completedArr };
   }, [rows, now]);
+
   const nextExam = useMemo(() => upcoming[0] || null, [upcoming]);
   const handlePeriodChange = (key) => (e) => setFilters((p) => ({ ...p, [key]: e.target.value }));
 
@@ -188,11 +228,11 @@ const ExamSchedule = () => {
       <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
-            <TableCell>Subject</TableCell>
-            <TableCell>Date</TableCell>
-            <TableCell>Start</TableCell>
-            <TableCell>End</TableCell>
-            <TableCell>Duration</TableCell>
+            <TableCell sx={{ bgcolor: theme.palette.background.default, fontWeight: 700 }}>Subject</TableCell>
+            <TableCell sx={{ bgcolor: theme.palette.background.default, fontWeight: 700 }}>Date</TableCell>
+            <TableCell sx={{ bgcolor: theme.palette.background.default, fontWeight: 700 }}>Start</TableCell>
+            <TableCell sx={{ bgcolor: theme.palette.background.default, fontWeight: 700 }}>End</TableCell>
+            <TableCell sx={{ bgcolor: theme.palette.background.default, fontWeight: 700 }}>Duration</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -222,48 +262,52 @@ const ExamSchedule = () => {
   );
 
   return (
-    <Box sx={{ backgroundColor: (t) => t.palette.grey[100], minHeight: '100vh', py: 4 }}>
+    <Box sx={{ backgroundColor: theme.palette.background.default, minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="center" mb={3} spacing={2}>
-          <Typography variant="h4" fontWeight="bold" color="primary.dark">Exam Schedule</Typography>
-          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'nowrap', color: 'text.secondary' }}>
-              College: {filters.collegeId}
-            </Typography>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Program</InputLabel>
-              <Select label="Program" value={filters.programId} onChange={handlePeriodChange('programId')}>
-                <MenuItem value={filters.programId || ''}>{filters.programId || '—'}</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Semester</InputLabel>
-              <Select label="Semester" value={filters.semester} onChange={handlePeriodChange('semester')}>
-                <MenuItem value={filters.semester || ''}>{filters.semester || '—'}</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Academic Year</InputLabel>
-              <Select label="Academic Year" value={filters.academicYear} onChange={handlePeriodChange('academicYear')}>
-                <MenuItem value={filters.academicYear}>{filters.academicYear}</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Exam Month/Year</InputLabel>
-              <Select label="Exam Month/Year" value={filters.examMonthYear} onChange={handlePeriodChange('examMonthYear')}>
-                <MenuItem value={filters.examMonthYear}>{filters.examMonthYear}</MenuItem>
-              </Select>
-            </FormControl>
-            <Tooltip title="Refresh Schedule">
-              <span>
-                <IconButton color="primary" onClick={handleRefresh} disabled={loading}>
-                  <RefreshIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Stack>
-
+        <SecondaryHeader
+          title="Exam Schedule"
+          leftArea={<HeaderBackButton />}
+          rightArea={
+            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                College: {filters.collegeId}
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 140, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
+                <InputLabel>Program</InputLabel>
+                <Select label="Program" value={filters.programId} onChange={handlePeriodChange('programId')}>
+                  <MenuItem value={filters.programId || ''}>{filters.programId || '—'}</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 120, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
+                <InputLabel>Semester</InputLabel>
+                <Select label="Semester" value={filters.semester} onChange={handlePeriodChange('semester')}>
+                  <MenuItem value={filters.semester || ''}>{filters.semester || '—'}</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 160, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
+                <InputLabel>Academic Year</InputLabel>
+                <Select label="Academic Year" value={filters.academicYear} onChange={handlePeriodChange('academicYear')}>
+                  <MenuItem value={filters.academicYear}>{filters.academicYear}</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 160, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
+                <InputLabel>Exam Month/Year</InputLabel>
+                <Select label="Exam Month/Year" value={filters.examMonthYear} onChange={handlePeriodChange('examMonthYear')}>
+                  <MenuItem value={filters.examMonthYear}>{filters.examMonthYear}</MenuItem>
+                </Select>
+              </FormControl>
+              <Tooltip title="Refresh Schedule">
+                <span>
+                  <IconButton color="primary" onClick={handleRefresh} disabled={loading} sx={{ bgcolor: theme.palette.background.paper }}>
+                    <RefreshIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+          }
+          renderBelow
+        />
+        
         {loading && (
           <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
             <CircularProgress size={24} />
@@ -274,7 +318,7 @@ const ExamSchedule = () => {
 
         {!error && (publishedDoc || publishedList.length > 0) && (
           <Stack spacing={3}>
-            <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+            <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1, bgcolor: theme.palette.background.paper }}>
               <CardContent>
                 <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} gap={2}>
                   <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />
@@ -286,7 +330,7 @@ const ExamSchedule = () => {
                     <Chip icon={<DoneAllIcon />} variant="outlined" label={`${completed.length} completed`} />
                   </Box>
                 </Stack>
-                <Box sx={{ mt: 2, p: 2, backgroundColor: (t) => t.palette.action.hover, borderRadius: 1, border: '1px solid', borderColor: (t) => t.palette.divider }}>
+                <Box sx={{ mt: 2, p: 2, backgroundColor: theme.palette.action.hover, borderRadius: 1, border: '1px solid', borderColor: (t) => t.palette.divider }}>
                   {nextExam ? (
                     <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
                       <Chip label={nextExam.subjectId || '—'} color="secondary" size="small" sx={{ fontWeight: 'bold' }} />
@@ -308,7 +352,9 @@ const ExamSchedule = () => {
                 <Tab value="upcoming" label={`Upcoming (${upcoming.length})`} />
                 <Tab value="completed" label={`Completed (${completed.length})`} />
               </Tabs>
-              {tab === 'upcoming' ? renderTable(upcoming, 'No upcoming exams.') : renderTable(completed, 'No completed exams.')}
+              {tab === 'upcoming'
+                ? renderTable(upcoming, 'No upcoming exams.')
+                : renderTable(completed, 'No completed exams.')}
             </Box>
           </Stack>
         )}

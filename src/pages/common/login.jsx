@@ -1,26 +1,18 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Alert,
-  Stack,
-  Card,
-  IconButton,
-  InputAdornment,
-  CircularProgress,
-} from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { TextField, Button, Typography, Box, Alert, Stack, Card, IconButton, InputAdornment, CircularProgress, Link, useTheme, Grid,
+        } from "@mui/material";
+import { Visibility, VisibilityOff, ArrowBack } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "../../firebase/Firebase";
 import { ThemeContext } from "../../context/ThemeContext";
+import { UTSLogo } from "../../components/header";
 
 function Login() {
   const { mode } = useContext(ThemeContext);
+  const theme = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,6 +20,10 @@ function Login() {
   const [messageType, setMessageType] = useState("");
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
 
   const validateInputs = () => {
@@ -51,28 +47,37 @@ function Login() {
     return isValid;
   };
 
-  const fetchUserRole = async (uid) => {
-    const collections = ["Admins", "Teachers", "Students"];
-    for (const collectionName of collections) {
-      const docRef = doc(db, collectionName, uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const details = docSnap.data();
-        let role = details.role || "unverified";
-
-        if (collectionName === "Teachers") {
-          role = details.isCollegeAssociate ? "CollegeAssociate" : "Teacher";
-        }
-        
-        console.log(`Fetched role: ${role} from ${collectionName}`);
-        return { role, details };
-      }
+  const validateResetEmail = () => {
+    if (!resetEmail) {
+      setResetError("Email is required.");
+      return false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
+      setResetError("Invalid email address.");
+      return false;
     }
-    
-    console.log("No user document found, defaulting to unverified");
-    return { role: "unverified", details: null };
+    setResetError("");
+    return true;
   };
+
+    const fetchUserRole = async (uid) => {
+      const collections = ["Admins", "Teachers", "Students"];
+      for (const collectionName of collections) {
+        const docRef = doc(db, collectionName, uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const details = docSnap.data();
+          let role = details.role || "unverified";
+          // Check for tester role
+          if (details.role === "tester" || details.isTester === true) {
+            role = "tester";
+          } else if (collectionName === "Teachers") {
+            role = details.isCollegeAssociate ? "CollegeAssociate" : "Teacher";
+          }
+          return { role, details };
+        }
+      }
+      return { role: "unverified", details: null };
+    };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,14 +85,10 @@ function Login() {
     setErrors({ email: "", password: "" });
 
     if (!validateInputs()) {
-      setMessage("Please correct the highlighted errors.");
-      setMessageType("error");
       return;
     }
-
     setIsSubmitting(true);
     try {
-      console.log("Login attempt with email:", email);
       const uid = auth.currentUser?.uid;
       if (uid) {
         localStorage.removeItem(`role_${uid}`);
@@ -107,15 +108,13 @@ function Login() {
       }
 
       const redirectTo =
+        role === "tester" ? "/test" :
         role === "Admin" ? "/admin" :
         role === "Teacher" || role === "CollegeAssociate" ? "/teacher" :
         role === "Student" ? "/home" :
         role === "verified" || role === "unverified" ? "/message" :
         "/login";
-
-      console.log("Redirecting to:", redirectTo);
       navigate(redirectTo, { replace: true });
-
     } catch (error) {
       console.error("Login error:", error.code, error.message);
       let errorMessage = "Login failed!";
@@ -149,6 +148,75 @@ function Login() {
     setIsSubmitting(false);
   };
 
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess(false);
+
+    if (!validateResetEmail()) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+      setMessage("Password reset email sent successfully!");
+      setMessageType("success");
+    } catch (error) {
+      console.error("Password reset error:", error);
+      let errorMessage = "Failed to send password reset email.";
+
+      switch (error.code) {
+        case "auth/user-not-found":
+          setResetError("No account found with this email address.");
+          errorMessage = "No account found with this email address.";
+          break;
+        case "auth/invalid-email":
+          setResetError("Invalid email address.");
+          errorMessage = "Invalid email address.";
+          break;
+        case "auth/too-many-requests":
+          setResetError("Too many requests. Please try again later.");
+          errorMessage = "Too many requests. Please try again later.";
+          break;
+        default:
+          setResetError("Failed to send reset email. Please try again.");
+      }
+      setMessage(errorMessage);
+      setMessageType("error");
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleKeyDown = (e, nextField) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (nextField) {
+        document.getElementById(nextField)?.focus();
+      } else {
+        if (isResetMode) {
+          handlePasswordReset(e);
+        } else {
+          handleSubmit(e);
+        }
+      }
+    }
+  };
+
+  const switchToResetMode = () => {
+    setIsResetMode(true);
+    setMessage(null);
+    setErrors({ email: "", password: "" });
+    setResetEmail(email);
+  };
+
+  const switchToLoginMode = () => {
+    setIsResetMode(false);
+    setResetError("");
+    setResetSuccess(false);
+    setMessage(null);
+  };
+
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(null), 5000);
@@ -161,31 +229,53 @@ function Login() {
   };
 
   const notificationVariants = {
-    hidden: { y: 200, opacity: 0 },
-    visible: { y: 180, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
-    exit: { y: 100, opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
+    hidden: { y: -50, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
+    exit: { y: -50, opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
   };
 
+  const pageVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: "easeOut" } },
+  };
+
+  const cardTransition = { duration: 0.5, ease: "easeInOut" };
+
   return (
-    <section
+    <motion.section
       className="hero is-fullheight"
       style={{
         background:
           mode === "default"
-            ? "linear-gradient(135deg, hsl(220, 100%, 71%) 0%, hsla(265, 100%, 70%, 0.28) 100%)"
-            : "hsl(219, 100%, 93.90%)",
-      }}
-    >
+            ? theme.palette.mode === 'dark' 
+              ? theme.palette.background.default
+              : "linear-gradient(135deg, hsl(200, 100%, 90%) 0%, hsl(265, 100%, 95%) 100%)"
+            : theme.palette.background.default,
+        }}
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+      >
       <Box
         sx={{
+          position: "absolute",
+          top: { xs: '3%', sm: '3%', md: "0" },
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+        }}
+      >
+        <UTSLogo clickable={false} width={170}/>
+      </Box>
+
+      <Grid
+        container
+        sx={{
+          height: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: "100vh",
-          pl: 4,
-          pt: 4,
-          flexDirection: "column",
-          position: "relative",
+          p: { xs: 2, md: 4 },
         }}
       >
         <AnimatePresence>
@@ -197,9 +287,11 @@ function Login() {
               exit="exit"
               style={{
                 position: "absolute",
-                top: -100,
-                width: "100%",
-                maxWidth: 500,
+                top: theme.spacing(2),
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "90%",
+                maxWidth: 400,
                 zIndex: 10,
               }}
             >
@@ -209,142 +301,269 @@ function Login() {
             </motion.div>
           )}
         </AnimatePresence>
+        
+        <Grid item xs={12} sm={10} md={8} lg={6}>
+          <motion.div
+            key={isResetMode ? "reset" : "login"}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={cardTransition}
+          >
+            <Card
+              sx={{
+                mt:3,
+                width: {md:"40vw", xs:"90vw"},
+                p: { xs: 3, sm: 1, md: 4 },
+                borderRadius: 3,
+                backdropFilter: "blur(20px)",
+                boxShadow:
+                  messageType === "error"
+                    ? "0px 0px 15px red"
+                    : "0px 12px 40px rgba(19, 24, 85, 0.1)",
+                border: messageType === "error" ? "2px solid red" : "1px solid rgba(0,0,0,0.1)",
+                transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.01)",
+                  boxShadow:
+                    messageType === "error"
+                      ? "0px 0px 20px red"
+                      : "0px 20px 60px rgba(19, 24, 85, 0.15)",
+                },
+              }}
+            >
+              {isResetMode ? (
+                // Password Reset Form
+                <>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2}}>
+                    <IconButton
+                      onClick={switchToLoginMode}
+                      sx={{ mr: 1, color: theme.palette.primary.main }}
+                      aria-label="back to login"
+                    >
+                      <ArrowBack />
+                    </IconButton>
+                    <Typography variant="h4" component="h1" fontWeight="bold" sx={{ color: theme.palette.text.primary }}>
+                      Reset Password
+                    </Typography>
+                  </Box>
 
-        <Card
-          sx={{
-            maxWidth: 500,
-            width: "100%",
-            p: 4,
-            borderRadius: 3,
-            bgcolor: "rgba(255, 255, 255, 0.85)",
-            backdropFilter: "blur(20px)",
-            boxShadow:
-              messageType === "error"
-                ? "0px 0px 10px red"
-                : "0px 12px 40px rgba(19, 24, 85, 0.37)",
-            border:
-              messageType === "error" ? "2px solid red" : "1px solid purple",
-            transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-            "&:hover": {
-              transform: "scale(1.02)",
-              boxShadow:
-                messageType === "error"
-                  ? "0px 0px 15px red"
-                  : "0px 15px 50px rgba(19, 24, 85, 0.5)",
-            },
-          }}
-        >
-          <Typography variant="h4" align="center" gutterBottom className="text-blue-900">
-            Welcome Back!
-          </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Enter your email address and we&apos;ll send you a link to reset your password.
+                  </Typography>
 
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <Stack spacing={2}>
-              <TextField
-                label="Email Address"
-                variant="outlined"
-                fullWidth
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={!!errors.email}
-                helperText={errors.email}
-                className="bg-white"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                      borderColor: "purple",
-                      boxShadow: "0 0 8px rgba(128, 0, 128, 0.3)",
-                    },
-                    "&.Mui-focused": {
-                      borderColor: "purple",
-                      boxShadow: "0 0 12px rgba(128, 0, 128, 0.5)",
-                    },
-                  },
-                }}
-              />
+                  {resetSuccess && (
+                    <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                      Password reset email sent! Check your inbox.
+                    </Alert>
+                  )}
 
-              <TextField
-                label="Password"
-                variant="outlined"
-                fullWidth
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                error={!!errors.password}
-                helperText={errors.password}
-                className="bg-white"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={toggleShowPassword}
-                        edge="end"
+                  <Box component="form" onSubmit={handlePasswordReset} noValidate>
+                    <Stack spacing={3}>
+                      <TextField
+                        id="reset-email"
+                        label="Email Address"
+                        variant="outlined"
+                        fullWidth
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, null)}
+                        error={!!resetError}
+                        helperText={resetError}
                         sx={{
-                          transition: "color 0.3s ease-in-out",
-                          "&:hover": {
-                            color: "purple",
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "white",
+                            transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+                            "&:hover fieldset": { borderColor: theme.palette.primary.main },
+                            "&.Mui-focused fieldset": {
+                              borderColor: theme.palette.primary.main,
+                              boxShadow: `0 0 10px ${theme.palette.primary.main}33`,
+                            },
                           },
                         }}
+                      />
+
+                      <Button
+                        variant="contained"
+                        type="submit"
+                        fullWidth
+                        disabled={isSubmitting}
+                        sx={{
+                          py: 1.5,
+                          borderRadius: 2,
+                          bgcolor: theme.palette.primary.main,
+                          "&:hover": {
+                            bgcolor: theme.palette.primary.dark,
+                            transform: "translateY(-2px)",
+                          },
+                          transition: "transform 0.2s ease-in-out",
+                        }}
                       >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                      borderColor: "purple",
-                      boxShadow: "0 0 8px rgba(128, 0, 128, 0.3)",
-                    },
-                    "&.Mui-focused": {
-                      borderColor: "purple",
-                      boxShadow: "0 0 12px rgba(128, 0, 128, 0.5)",
-                    },
-                  },
-                }}
-              />
+                        {isSubmitting ? (
+                          <CircularProgress size={24} color="inherit" />
+                        ) : (
+                          "Send Reset Email"
+                        )}
+                      </Button>
 
-              <Button
-                variant="contained"
-                type="submit"
-                fullWidth
-                disabled={isSubmitting}
-                className="bg-blue-700 hover:bg-blue-800"
-                sx={{
-                  py: 1.5,
-                  transition: "all 0.3s ease-in-out",
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                    boxShadow: "0 0 15px rgba(0, 0, 255, 0.3)",
-                  },
-                }}
-              >
-                {isSubmitting ? <CircularProgress size={24} color="inherit" /> : "Login"}
-              </Button>
+                      <Typography align="center" variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                        Remember your password?{" "}
+                        <Link
+                          component="button"
+                          type="button"
+                          onClick={switchToLoginMode}
+                          sx={{
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main,
+                            textDecoration: "underline",
+                            transition: "color 0.3s ease-in-out",
+                            "&:hover": { color: theme.palette.primary.dark },
+                          }}
+                        >
+                          Back to Login
+                        </Link>
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </>
+              ) : (
+                // Login Form
+                <>
+                  <Typography variant="h4" align="center" gutterBottom fontWeight="bold" sx={{ color: theme.palette.text.primary }}>
+                    Welcome Back!
+                  </Typography>
+                  <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
+                    Sign in to your account
+                  </Typography>
 
-              <Typography align="center" className="text-gray-600">
-                Don&apos;t have an account?{" "}
-                <span
-                  className="text-blue-600 cursor-pointer underline"
-                  onClick={() => navigate("/register")}
-                  style={{
-                    transition: "color 0.3s ease-in-out",
-                  }}
-                  onMouseEnter={(e) => (e.target.style.color = "purple")}
-                  onMouseLeave={(e) => (e.target.style.color = "#2563eb")}
-                >
-                  Register
-                </span>
-              </Typography>
-            </Stack>
-          </Box>
-        </Card>
-      </Box>
-    </section>
+                  <Box component="form" onSubmit={handleSubmit} noValidate>
+                    <Stack spacing={3}>
+                      <TextField
+                        id="email"
+                        label="Email Address"
+                        variant="outlined"
+                        fullWidth
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, 'password')}
+                        error={!!errors.email}
+                        helperText={errors.email}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "white",
+                            transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+                            "&:hover fieldset": { borderColor: theme.palette.primary.main },
+                            "&.Mui-focused fieldset": {
+                              borderColor: theme.palette.primary.main,
+                              boxShadow: `0 0 10px ${theme.palette.primary.main}33`,
+                            },
+                          },
+                        }}
+                      />
+
+                      <TextField
+                        id="password"
+                        label="Password"
+                        variant="outlined"
+                        fullWidth
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, null)}
+                        error={!!errors.password}
+                        helperText={errors.password}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                onClick={toggleShowPassword}
+                                edge="end"
+                                sx={{
+                                  transition: "color 0.3s ease-in-out",
+                                  "&:hover": { color: theme.palette.primary.main },
+                                }}
+                                aria-label="toggle password visibility"
+                              >
+                                {showPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "white",
+                            transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+                            "&:hover fieldset": { borderColor: theme.palette.primary.main },
+                            "&.Mui-focused fieldset": {
+                              borderColor: theme.palette.primary.main,
+                              boxShadow: `0 0 10px ${theme.palette.primary.main}33`,
+                            },
+                          },
+                        }}
+                      />
+
+                      <Button
+                        variant="contained"
+                        type="submit"
+                        fullWidth
+                        disabled={isSubmitting}
+                        sx={{
+                          py: 1.5,
+                          borderRadius: 2,
+                          bgcolor: theme.palette.primary.main,
+                          "&:hover": {
+                            bgcolor: theme.palette.primary.dark,
+                            transform: "translateY(-2px)",
+                          },
+                          transition: "transform 0.2s ease-in-out",
+                        }}
+                      >
+                        {isSubmitting ? <CircularProgress size={24} color="inherit" /> : "Login"}
+                      </Button>
+
+                      <Typography align="center" variant="body2" sx={{ color: theme.palette.text.secondary, mt: 2 }}>
+                        <Link
+                          component="button"
+                          type="button"
+                          onClick={switchToResetMode}
+                          sx={{
+                            display: "block",
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main,
+                            textDecoration: "underline",
+                            transition: "color 0.3s ease-in-out",
+                            "&:hover": { color: theme.palette.primary.dark },
+                          }}
+                        >
+                          Forgot Password?
+                        </Link>
+                        Don&apos;t have an account?{" "}
+                        <Link
+                          component="button"
+                          type="button"
+                          onClick={() => navigate("/register")}
+                          sx={{
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main,
+                            textDecoration: "underline",
+                            transition: "color 0.3s ease-in-out",
+                            "&:hover": { color: theme.palette.primary.dark },
+                          }}
+                        >
+                          Register
+                        </Link>
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </>
+              )}
+            </Card>
+          </motion.div>
+        </Grid>
+      </Grid>
+    </motion.section>
   );
 }
 

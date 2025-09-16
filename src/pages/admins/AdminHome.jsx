@@ -1,31 +1,15 @@
 import React, { useContext } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import AuthContext from '../../context/AuthContext';
-import {
-  AppBar,
-  Typography,
-  Grid,
-  Card,
-  CardActionArea,
-  Container,
-  Box,
-  IconButton,
-  Divider,
-  useTheme,
+import { Typography, Grid, Card, CardActionArea, Container, Box, Divider, useTheme,
 } from '@mui/material';
-import {
-  PersonAdd,
-  Login,
-  LockReset,
-  CurrencyRupee,
-  CheckCircle,
+import {PersonAdd, ManageAccounts, School, RequestQuote, HowToReg, Campaign, UploadFile, SupportAgent, Forum, PeopleAlt,LocalLibrary,        
 } from '@mui/icons-material';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HamburgerMenu, UTSLogo, UserProfile } from '../../components/header';
+import Header from '../../components/header';
 
-// Dynamic greeting based on time
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
@@ -41,55 +25,51 @@ export default function AdminHome() {
   const fullName = userDetails
     ? `${userDetails.firstName || 'Admin'} ${userDetails.lastName || ''}`.trim()
     : 'Admin';
-  
-  const collegeName = userDetails?.collegeName || 'Institute';
 
   const adminButtons = [
     { label: 'Add Teachers', link: '/admin/add-teacher', icon: <PersonAdd /> },
-    { label: 'Login as User', link: '/admin/user-details', icon: <Login /> },
-    { label: 'Reset User Password', link: '/admin/reset-password', icon: <LockReset /> },
+    { label: 'User Details', link: '/admin/user-details', icon: <ManageAccounts /> },
+    { label: 'Manage Colleges & Courses', link: '/admin/college_courses', icon: <School /> },
     { label: 'DB Queries', link: '/admin/executeDB', icon: <TerminalIcon /> },
-    { label: 'Billing', link: '/admin/billing', icon: <CurrencyRupee /> },
-    { label: 'Approve Students', link: '/admin/student-approval', icon: <CheckCircle /> },
+    { label: 'Billing', link: '/admin/billing', icon: <RequestQuote /> },
+    { label: 'Approve Students', link: '/admin/student-approval', icon: <HowToReg /> },
+    { label: 'College Announcements', link: '/admin/announcements', icon: <Campaign /> },
+    { label: 'Upload Syllabus', link: '/admin/syllabus', icon: <UploadFile /> },
+    { label: 'Associate Tickets', link: '/admin/tickets', icon: <SupportAgent /> },
+    { label: 'Faculty Space', link: '/admin/space', icon: <Forum /> },
+    { label: 'User Lists', link: '/admin/lists', icon: <PeopleAlt /> },
+    { label: 'Uni-Library', link: '/admin/library', icon: <LocalLibrary /> },
   ];
-
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        background: mode === 'default'
-          ? `linear-gradient(135deg, ${theme.palette.red.main} 0%, ${theme.palette.red.focus} 100%)`
-          : mode === 'light'
-          ? theme.palette.red.main
-          : `linear-gradient(135deg, ${theme.palette.red.main} -25%, ${theme.palette.background.paper} 100%)`,
+        background:
+          mode === 'default'
+            ? `linear-gradient(135deg, ${theme.palette.red.main} 0%, ${theme.palette.red.focus} 100%)`
+            : mode === 'light'
+            ? theme.palette.red.main
+            : `linear-gradient(135deg, ${theme.palette.red.main} -25%, ${theme.palette.background.paper} 100%)`,
         color: theme.palette.contrastText,
         transition: 'background 0.5s ease-in-out',
       }}
     >
-      {/* Top Bar */}
-      <AppBar position="static" sx={{ background: theme.palette.red.main }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', p: 1 }}>
-          <Box sx={{ position: 'absolute', left: 60, top: 25, gap: 2, display: 'flex', alignItems: 'center' }}>
-            <HamburgerMenu />
-            <Typography variant="h6" sx={{ color: theme.palette.contrastText }}>
-              {collegeName}
-            </Typography>
-          </Box>
+      <Header 
+      rightSlot={
+          <Typography
+            sx={{
+              ml: 1,
+              display: { xs: 'none', sm: 'inline'},
+              color: theme.palette.contrastText,
+              fontWeight: 400,
+            }}
+          >
+            {fullName}
+          </Typography>
+        }
+      />
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', margin: '0 10px', position: 'relative', left: '39%' }}>
-            <UTSLogo />
-          </Box>
-
-          <Box sx={{ display: 'flex', alignContent: 'center', position: 'relative', right: '15px' }}>
-            <UserProfile />
-            <Typography sx={{ alignContent: 'center', color: theme.palette.contrastText }}>
-              {fullName}
-            </Typography>
-          </Box>
-        </Box>
-      </AppBar>
-
-      {/* Dynamic Greeting */}
+      {/* Greeting */}
       <Container sx={{ py: 4 }}>
         <Box textAlign="center" mb={4}>
           <motion.div
@@ -103,31 +83,21 @@ export default function AdminHome() {
             >
               {getGreeting()}, {fullName}!
             </Typography>
-            <Typography
-              variant="h5"
-              sx={{ color: theme.palette.contrastText, mb: 1 }}
-            >
-              Admin Dashboard
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              sx={{ color: theme.palette.contrastText, fontStyle: 'italic' }}
-            >
+            <Typography variant="subtitle1" sx={{ color: theme.palette.contrastText, fontStyle: 'italic' }}>
               Manage Users and System Settings
             </Typography>
           </motion.div>
         </Box>
-
         {/* Admin Buttons */}
         <Grid container spacing={4} justifyContent="center">
           {adminButtons.map((button, index) => (
             <Grid
-              key={index}
+              key={button.label}
               sx={{
                 width: {
-                  xs: '80%',
+                  xs: '95%',
                   sm: '45%',
-                  md: '31.30%'
+                  md: '31.30%',
                 },
               }}
             >
@@ -165,22 +135,26 @@ export default function AdminHome() {
                         textAlign: 'center',
                         p: 3,
                         minHeight: 125,
+                        gap: 2,
                       }}
                     >
-                      <IconButton
+                      <Box
                         sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 0,
                           color: theme.palette.contrastText,
-                          mr: 2,
-                          fontSize: '1.8rem',
-                          transition: 'transform 0.3s ease',
+                          transition: 'transform 0.3s ease, color 0.3s ease',
                           '&:hover': {
-                            transform: 'scale(1.2)',
+                            transform: 'scale(1.15)',
                             color: theme.palette.warning.main,
                           },
+                          '& svg': { fontSize: 28 },
                         }}
                       >
                         {button.icon}
-                      </IconButton>
+                      </Box>
                       <Typography
                         variant="h5"
                         sx={{

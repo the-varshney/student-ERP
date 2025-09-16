@@ -1,18 +1,21 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
   Avatar, Grid, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Divider, Snackbar, LinearProgress, Stack
+  DialogActions, TextField, Divider, Snackbar, LinearProgress, Stack,alpha, useTheme
 } from '@mui/material';
-import { School as SchoolIcon, Sort as SortIcon } from '@mui/icons-material';
 import TextRotateVerticalIcon from '@mui/icons-material/TextRotateVertical';
+import {Sort as SortIcon } from '@mui/icons-material';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import ReplayIcon from '@mui/icons-material/Replay';
-import { auth, db } from '../../firebase/Firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase/Firebase';
+import { collection, query, where, getDocs} from 'firebase/firestore';
 import axios from 'axios';
+import { HeaderBackButton } from "../../components/header";
+import SecondaryHeader from "../../components/secondaryHeader";
+import TeacherHeader from '../../components/TeacherHeader';
+import { useAuth } from "../../context/AuthContext";
 
 const assessmentOptions = [
   { value: 'midSem', label: 'Mid Semester' },
@@ -25,7 +28,7 @@ const assessmentOptions = [
 ];
 
 const ResultUpdate = () => {
-  const [teacherData, setTeacherData] = useState(null);
+  const { userDetails: teacherData, role, loading: authLoading } = useAuth();
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -47,28 +50,19 @@ const ResultUpdate = () => {
   const [sortBy, setSortBy] = useState('default');
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const theme = useTheme();
 
   useEffect(() => {
-    fetchTeacherData();
-  }, []);
-
-  const fetchTeacherData = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-      const teacherDoc = await getDoc(doc(db, 'Teachers', user.uid));
-      if (teacherDoc.exists()) {
-        const data = teacherDoc.data();
-        setTeacherData(data);
-        setPrograms([data.program]);
-        setSubjects(data.subjects || []);
-        setSemesters([...new Set(data.subjects?.map(s => s.semester) || [])].sort());
-      }
-    } catch (error) {
-      console.error('Error fetching teacher data:', error);
-      setSnackbar({ open: true, message: 'Error fetching teacher data', severity: 'error' });
-    }
-  };
+  if (authLoading) return;
+  if (!teacherData || role !== "Teacher") {
+  setSnackbar({ open: true, message: "Access restricted to teachers only", severity: "error" });
+  return;
+  }
+  setPrograms(teacherData.program ? [teacherData.program] : []);
+  const subs = Array.isArray(teacherData.subjects) ? teacherData.subjects : [];
+  setSubjects(subs);
+  setSemesters([...new Set(subs.map(s => s.semester))].sort());
+  }, [teacherData, role, authLoading]);
 
   const getFilteredSubjects = () => {
     if (!selectedSemester) return [];
@@ -309,9 +303,9 @@ const ResultUpdate = () => {
     return { entered, pending, total: finalStudents.length };
   };
 
-  if (!teacherData) {
+  if (authLoading || !teacherData)  {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
         <Typography sx={{ ml: 2 }}>Loading teacher data...</Typography>
       </Box>
@@ -320,33 +314,20 @@ const ResultUpdate = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, minHeight: '100vh', mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        Update Student Results
-      </Typography>
+      <SecondaryHeader
+        title="Update Student Results"
+        leftArea={<HeaderBackButton/>}
+        dense
+        sticky
+      />
 
       {/* Teacher Info Card */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item>
-              <Avatar sx={{ width: 60, height: 60, bgcolor: 'primary.main' }}>
-                <SchoolIcon />
-              </Avatar>
-            </Grid>
-            <Grid item xs>
-              <Typography variant="h6">
-                {teacherData.firstName} {teacherData.lastName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Teacher ID: {teacherData.teacherId} | Department Name: {teacherData.department}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                College Id: {teacherData.college} | Program Code: {teacherData.program}
-              </Typography>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+ <TeacherHeader sx={{background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 1)}, ${alpha(theme.palette.secondary.main, 0.4)})`,}}
+                extraTexts={[
+                  { text: `Teacher ID: ${teacherData?.teacherId || '—'}` },
+                  { text: `College: ${teacherData?.college || '—'}` }
+                ]}
+      />
 
       {/* Class and Assessment Selection Card */}
       <Card sx={{ mb: 3 }}>

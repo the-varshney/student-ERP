@@ -1,42 +1,47 @@
-import React, {useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import AuthContext from '../../context/AuthContext';
 import {
-  AppBar,
   Typography,
   Grid,
   CardActionArea,
   Container,
   Box,
-  IconButton,
   Divider,
   useTheme,
   Card,
 } from '@mui/material';
 import {
-  CalendarToday,
-  UploadFile,
-  School,
-  Group,
-  Assignment,
-  Feedback,
-  MenuBook,
-  Chat,
-  CurrencyRupee,
-  Schedule,
-  NoteAdd,
-  VerifiedUser,
-  SupportAgent,
-  Campaign,          
-  ConfirmationNumber,
-  CheckCircle as PublishIcon ,
-  PeopleAlt,         
+  CalendarMonth,        
+  FactCheck,            
+  UploadFile,           
+  AssignmentTurnedIn,   
+  Feedback,             
+  Grading,              
+  TrendingUp,           
+  Forum,                
+  LocalLibrary,         
+  Campaign,             
+  Description,          
+  AutoStories,          
+
+  // Associate-only icons
+  VerifiedUser,         
+  PeopleAlt,            
+  Payments,             
+  Publish,              
+  SupportAgent,         
+  ConfirmationNumber,   
+  EventNote,            
+  CloudUpload,          
+  EmojiEvents,          
+  ScheduleSend,         
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HamburgerMenu, UTSLogo, UserProfile } from '../../components/header';
+import Header from '../../components/header';
 
-const MotionCard = motion.create(Card);
+const MotionCard = motion(Card);
 
 // Greeting function
 const getGreeting = () => {
@@ -46,56 +51,103 @@ const getGreeting = () => {
   return 'Good Evening';
 };
 
+const NS = 'erp';
+const VER = 'v1';
+const LAST_UID_KEY = `${NS}:lastUid:${VER}`;
+const cacheKey = (uid, name) => `${NS}:${uid}:${name}:${VER}`;
+
+const readEnvelope = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    return payload?.v ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const readCachedTeacher = () => {
+  try {
+    const uid = localStorage.getItem(LAST_UID_KEY);
+    if (!uid) return { role: null, details: null };
+    const role = readEnvelope(cacheKey(uid, 'role'));
+    const details = readEnvelope(cacheKey(uid, 'details'));
+    return { role, details };
+  } catch {
+    return { role: null, details: null };
+  }
+};
+
 export default function TeacherHome() {
   const { mode } = useContext(ThemeContext);
   const { userDetails, role } = useContext(AuthContext);
   const theme = useTheme();
 
-  const fullName = userDetails
-    ? `${userDetails.firstName || 'Teacher'} ${userDetails.lastName || ''}`.trim()
+  const [cached, setCached] = useState(() => readCachedTeacher());
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (!e?.key) return;
+      if (e.key.includes(':role:') || e.key.includes(':details:') || e.key === LAST_UID_KEY) {
+        setCached(readCachedTeacher());
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const effectiveRole = role || cached.role;
+  const isStaff = effectiveRole === 'Teacher' || effectiveRole === 'CollegeAssociate';
+  const effectiveDetails = isStaff ? (userDetails || cached.details) : userDetails;
+
+  const fullName = effectiveDetails
+    ? `${effectiveDetails.firstName || 'Teacher'} ${effectiveDetails.lastName || ''}`.trim()
     : 'Loading...';
 
-  const collegeName = userDetails?.college || 'Institute';
-
-  // Teacher-only buttons 
+  // Teacher-only buttons
   const teacherOnlyButtons = [
-    { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
-    { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
-    { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <NoteAdd /> },
-    { label: 'Manage Assignments', link: '/teacher/assignments', icon: <Assignment /> },
+    { label: 'View Schedule', link: '/teacher/schedule', icon: <CalendarMonth /> },
+    { label: 'Take Attendance', link: '/teacher/attendance', icon: <FactCheck /> },
+    { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <UploadFile /> },
+    { label: 'Manage Assignments', link: '/teacher/assignments', icon: <AssignmentTurnedIn /> },
     { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
-    { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
-    { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
-    { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
-    { label: 'E-Library', link: '/teacher/library', icon: <MenuBook /> },
+    { label: 'Manage Results', link: '/teacher/results', icon: <Grading /> },
+    { label: 'Track Student Progress', link: '/teacher/progress', icon: <TrendingUp /> },
+    { label: 'Faculty Space', link: '/teacher/chat', icon: <Forum /> },
+    { label: 'E-Library', link: '/teacher/library', icon: <LocalLibrary /> },
     { label: 'Announcements', link: '/teacher/announcement', icon: <Campaign /> },
+    { label: 'Syllabus', link: '/teacher/syllabus', icon: <Description /> },
+    { label: 'E-Resources', link: '/teacher/Eresources', icon: <AutoStories /> },
   ];
 
-  // Teacher-associates buttons
+  // Teacher-associate shared tools
   const sharedTeacherToolsForAssociate = [
-    { label: 'View Schedule', link: '/teacher/schedule', icon: <Schedule /> },
-    { label: 'Take Attendance', link: '/teacher/attendance', icon: <CalendarToday /> },
-    { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <NoteAdd /> },
-    { label: 'Manage Assignments', link: '/teacher/assignments', icon: <Assignment /> },
+    { label: 'View Schedule', link: '/teacher/schedule', icon: <CalendarMonth /> },
+    { label: 'Take Attendance', link: '/teacher/attendance', icon: <FactCheck /> },
+    { label: 'Upload Notes', link: '/teacher/upload-notes', icon: <UploadFile /> },
+    { label: 'Manage Assignments', link: '/teacher/assignments', icon: <AssignmentTurnedIn /> },
     { label: 'Collect Feedback', link: '/teacher/feedback', icon: <Feedback /> },
-    { label: 'Manage Results', link: '/teacher/results', icon: <School /> },
-    { label: 'Track Progress', link: '/teacher/progress', icon: <Group /> },
-    { label: 'Faculty Chat', link: '/teacher/chat', icon: <Chat /> },
-    { label: 'Library', link: '/teacher/library', icon: <MenuBook  /> },
+    { label: 'Manage Results', link: '/teacher/results', icon: <Grading /> },
+    { label: 'Track Progress', link: '/teacher/progress', icon: <TrendingUp /> },
+    { label: 'Faculty Space', link: '/teacher/chat', icon: <Forum /> },
+    { label: 'Library', link: '/teacher/library', icon: <LocalLibrary /> },
+    { label: 'Syllabus', link: '/teacher/syllabus', icon: <Description /> },
   ];
 
   // Associate-only section
   const associateOnlyButtons = [
     { label: 'Verify Students Data', link: '/college/verify-students', icon: <VerifiedUser /> },
-    { label: 'Students List', link: '/associate/students', icon: <PeopleAlt /> },
-    { label: 'Fee Overview', link: '/teacher/dues', icon: <CurrencyRupee /> },
-    { label: 'Publish Results', link: '/college/publish-results', icon: <PublishIcon /> },
-    { label: 'Announcements', link: '/associate/announcement', icon: <Campaign /> },
-    { label: 'Upload Timetable', link: '/teacher/uploadtts', icon: <UploadFile /> },
-    { label: 'Student Chats', link: '/associate/student-chats', icon: <SupportAgent /> },
-    { label: 'Ticket Desk', link: '/associate/tickets', icon: <ConfirmationNumber /> },
-    { label: 'Exam Scheduler ', link: '/college/exam-schedule-create', icon: <SupportAgent /> },
-
+    { label: 'Students List', link: '/college/students', icon: <PeopleAlt /> },
+    { label: 'Fee Overview', link: '/college/fees-status', icon: <Payments /> },
+    { label: 'Publish Results', link: '/college/publish-results', icon: <Publish /> },
+    { label: 'Announcements', link: '/college/announcement', icon: <Campaign /> },
+    { label: 'Upload Timetable', link: '/college/timetable', icon: <UploadFile /> },
+    { label: 'Upload Teacher Schedules', link: '/college/teacher_schedules', icon: <ScheduleSend /> },
+    { label: 'Student Tickets', link: '/college/student-tickets', icon: <SupportAgent /> },
+    { label: 'Admin Assistance', link: '/associate/tickets', icon: <ConfirmationNumber /> },
+    { label: 'Exam Scheduler', link: '/college/exam-schedule-create', icon: <EventNote /> },
+    { label: 'Upload Eresources', link: '/college/eresources', icon: <CloudUpload /> },
+    { label: 'Update Achievements', link: '/college/achievements', icon: <EmojiEvents /> },
   ];
 
   const renderButtonGrid = (buttons, startIndex = 0) => (
@@ -105,7 +157,7 @@ export default function TeacherHome() {
           key={`${button.label}-${index}`}
           sx={{
             width: {
-              xs: '80%',
+              xs: '95%',
               sm: '45%',
               md: '31.30%',
             },
@@ -148,20 +200,23 @@ export default function TeacherHome() {
                   minHeight: 125,
                 }}
               >
-                <IconButton
+                <Box
                   sx={{
-                    color: theme.palette.contrastText,
                     mr: 2,
-                    fontSize: '1.8rem',
-                    transition: 'transform 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: theme.palette.contrastText,
+                    transition: 'transform 0.3s ease, color 0.3s ease',
                     '&:hover': {
                       transform: 'scale(1.2)',
                       color: theme.palette.primary.main,
                     },
+                    '& svg': { fontSize: 28 },
                   }}
                 >
                   {button.icon}
-                </IconButton>
+                </Box>
                 <Typography
                   variant="h5"
                   sx={{
@@ -196,29 +251,22 @@ export default function TeacherHome() {
         transition: 'background 0.5s ease-in-out',
       }}
     >
-      {/* Top Navbar */}
-      <AppBar position="static" sx={{ background: theme.palette.green.main }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', p: 1 }}>
-          <Box sx={{ position: 'absolute', left: 60, top: 25, gap: 2, display: 'flex', alignItems: 'center' }}>
-            <HamburgerMenu />
-            <Typography variant="h6" sx={{ color: theme.palette.contrastText }}>
-              {collegeName}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center', margin: '0 10px', position: 'relative', left: '39%' }}>
-            <UTSLogo />
-          </Box>
-          <Box sx={{ display: 'flex', alignContent: 'center', position: 'relative', right: '15px' }}>
-            <UserProfile />
-            <Typography sx={{ alignContent: 'center', color: theme.palette.contrastText }}>
-              {fullName}
-            </Typography>
-          </Box>
-        </Box>
-      </AppBar>
+      <Header
+        rightSlot={
+          <Typography
+            sx={{
+              ml: 1,
+              display: { xs: 'none', sm: 'inline' },
+              color: theme.palette.contrastText,
+              fontWeight: 400,
+            }}
+          >
+            {fullName}
+          </Typography>
+        }
+      />
 
       <Container sx={{ py: 6 }}>
-        {/* Greeting */}
         <Box textAlign="center" mb={6}>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -230,7 +278,7 @@ export default function TeacherHome() {
               sx={{
                 fontWeight: 'bold',
                 mb: 2,
-                color: theme.palette.green.main,
+                color: theme.palette.contrastText,
               }}
             >
               {getGreeting()}, {fullName}!
@@ -238,23 +286,23 @@ export default function TeacherHome() {
             <Typography
               variant="h4"
               sx={{
-                color: theme.palette.text.secondary,
+                color: theme.palette.green.light,
                 mb: 3,
                 fontStyle: 'italic',
               }}
             >
-              Welcome to {collegeName} ERP Portal
+              Welcome to ERP Portal
             </Typography>
           </motion.div>
         </Box>
 
         {/* Top section: Teacher tools */}
-        {role === 'CollegeAssociate'
+        {effectiveRole === 'CollegeAssociate'
           ? renderButtonGrid(sharedTeacherToolsForAssociate)
           : renderButtonGrid(teacherOnlyButtons)}
 
         {/* Associate-only section */}
-        {role === 'CollegeAssociate' && (
+        {effectiveRole === 'CollegeAssociate' && (
           <>
             <Divider sx={{ my: 4, backgroundColor: theme.palette.green.main, opacity: 0.6 }} />
             {renderButtonGrid(associateOnlyButtons, sharedTeacherToolsForAssociate.length)}

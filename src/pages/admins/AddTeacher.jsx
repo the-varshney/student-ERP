@@ -1,26 +1,5 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useContext, useEffect, useRef } from "react";
-import {
-  Box,
-  Card,
-  Typography,
-  TextField,
-  Button,
-  Stack,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  IconButton,
-  CircularProgress,
-  Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Snackbar,
-  Slide,
-  FormHelperText,
-  useTheme,
+import React, { useState, useEffect, useRef } from "react";
+import { Box, Card, Typography, TextField, Button, Stack, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress, Divider, Dialog, DialogTitle, DialogContent, Snackbar, Slide, FormHelperText, useTheme,
 } from "@mui/material";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
@@ -32,8 +11,9 @@ import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
-import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
+import { HeaderBackButton } from "../../components/header";
+import SecondaryHeader from "../../components/secondaryHeader";
 
 function SlideTransition(props) {
   return <Slide {...props} direction="left" />;
@@ -42,7 +22,7 @@ function SlideTransition(props) {
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Cache
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour limit
+const CACHE_TTL = 1000 * 60 * 60;
 const setCache = (key, data) => {
   try {
     localStorage.setItem(
@@ -70,7 +50,6 @@ const getCache = (key) => {
 };
 
 function AddTeacher() {
-  const { mode } = useContext(ThemeContext);
   const theme = useTheme();
 
   const [teacherData, setTeacherData] = useState({
@@ -106,7 +85,6 @@ function AddTeacher() {
   const [programsList, setProgramsList] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [subjectsOptionsByRow, setSubjectsOptionsByRow] = useState({});
-
   //Refs for Enter Key handeling
   const firstNameRef = useRef(null);
   const lastNameRef = useRef(null);
@@ -138,7 +116,6 @@ function AddTeacher() {
     fetchColleges();
   }, []);
 
-  // event handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setTeacherData((prev) => ({ ...prev, [name]: value }));
@@ -211,11 +188,8 @@ function AddTeacher() {
     setProgramsList([]);
     setSemesters([]);
     setSubjectsOptionsByRow({});
-    
     if (!departmentId || !collegeId) return;
-
     setTimeout(() => programRef.current?.focus(), 100);
-
     const cacheKey = `college-${collegeId}-dept-${departmentId}-programs`;
     try {
       let data = getCache(cacheKey);
@@ -267,7 +241,7 @@ function AddTeacher() {
   };
   
   const handleSemesterChange = async (idx, e) => {
-    const semesterValue = e.target.value ?? ''; // FIX: Prevent undefined
+    const semesterValue = e.target.value ?? '';
     const { program: programId } = teacherData;
     
     setTeacherData(prev => {
@@ -491,19 +465,20 @@ function AddTeacher() {
   };
   
   return (
-    <section
-      style={{
-        background:
-          mode === "default"
-            ? `linear-gradient(135deg, ${theme.palette.red.main}-25%, ${theme.palette.red.focus} 100%)`
-            : theme.palette.background.default,
-      }}
-    >
+    <section>
+      <Box sx={{ px: { xs: 1.5, md: 2 }, pt: 2 ,maxWidth:{xs:"100vw", md:"90vw"}, mx:"auto"}}>
+              <SecondaryHeader
+                title="Add New Teacher"
+                subtitle="Create a teacher account, assign department/program, and map subjects."
+                leftArea={<HeaderBackButton/>}
+              />
+            </Box>
       <Box sx={{ display: "flex", justifyContent: "center", minHeight: "100vh", p: 2 }}>
-        <Card sx={{ width: "100%", maxWidth: 950, p: 4, borderRadius: 3 }}>
-          <Typography variant="h4" align="center" fontWeight={"bold"} gutterBottom>
-            Add New Teacher
-          </Typography>
+        <Card sx={{ width: "90%", maxWidth: "90vw", p: 4, borderRadius: 3 }}>
+          <Typography variant="h6" align="start" fontWeight={"bold"} gutterBottom>
+                      Teacher Data
+                    </Typography>
+                    
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
               <TextField label="First Name" name="firstName" value={teacherData.firstName} inputRef={firstNameRef} onChange={handleInputChange} onKeyDown={(e) => handleKeyDown(e, lastNameRef)} error={!!errors.firstName} helperText={errors.firstName} fullWidth/>

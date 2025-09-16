@@ -1,37 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import {
-  Box,
-  Container,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Chip,
-  Stack,
-  Button,
-  IconButton,
-  CircularProgress,
-  LinearProgress,
-  Tooltip,
-  Alert,
-  Divider,
-  TextField,
-  Tabs,
-  Tab,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Paper,
-  TableContainer,
-} from "@mui/material";
+import { Box, Container, Typography, Card, CardContent, Grid, Chip, Stack, Button, IconButton, CircularProgress, LinearProgress, 
+  Tooltip, Alert, Divider, TextField, Tabs, Tab, Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer,
+  } from "@mui/material";
 import {
   CloudUpload as UploadIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
-  Assignment as AssignmentIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   Policy as RulesIcon,
@@ -40,43 +14,59 @@ import {
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
+
 import { auth, db, storage } from "../../firebase/Firebase";
-import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  serverTimestamp,
+import { collection, query, where, getDocs, addDoc, serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import StudentHeader from "../../components/StudentHeader";
+ import { HeaderBackButton } from "../../components/header";
+ import SecondaryHeader from "../../components/secondaryHeader";
 
 const TAB_KEYS = ["pending", "completed", "past"];
 
+const NS = "erp";
+const VER = "v1";
+const key = (uid, name) => `${NS}:${uid}:${name}:${VER}`;
+const parseCache = (raw) => { try { return raw ? JSON.parse(raw) : null; } catch { return null; } };
+
+const readMergedStudentFromLocal = () => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+  const mergedRaw = typeof window !== "undefined" ? window.localStorage.getItem(key(uid, "student")) : null;
+  const mergedEntry = parseCache(mergedRaw);
+  const merged = mergedEntry?.v || null;
+  if (merged) return merged;
+  const legacyRaw = typeof window !== "undefined" ? window.localStorage.getItem(`userDetails_${uid}`) : null;
+  try { return legacyRaw ? JSON.parse(legacyRaw) : null; } catch { return null; }
+};
+
+const normalizeStudent = (merged, fallbackUid) => ({
+  firebaseUid: merged?.firebaseId || fallbackUid || "",
+  collegeId: merged?.collegeId || "",
+  program: merged?.Program || merged?.program || "",
+  semester: Number(merged?.Semester || merged?.semester || 0),
+  enrollmentNo: merged?.EnrollmentNo || merged?.enrollmentNo || "",
+  firstName: merged?.firstName || "",
+  lastName: merged?.lastName || "",
+  academicId: merged?._academic?._id || "",
+});
+
 const StudentAssignments = () => {
-  const [studentFirebaseData, setStudentFirebaseData] = useState(null);
-  const [studentMongo, setStudentMongo] = useState(null);
+  const [student, setStudent] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [latestSubmission, setLatestSubmission] = useState({}); // { [assignmentId]: submission }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Per-assignment UI state
-  const [textAnswer, setTextAnswer] = useState({}); 
-  const [uploading, setUploading] = useState({}); 
-  const [progress, setProgress] = useState({}); 
-  const [fileMeta, setFileMeta] = useState({}); 
-  const [latestSubmission, setLatestSubmission] = useState({});
+  const [textAnswer, setTextAnswer] = useState({});
+  const [uploading, setUploading] = useState({});
+  const [progress, setProgress] = useState({});
+  const [fileMeta, setFileMeta] = useState({});
 
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedByTab, setSelectedByTab] = useState({
-    pending: null,
-    completed: null,
-    past: null,
-  });
+  const [selectedByTab, setSelectedByTab] = useState({ pending: null, completed: null, past: null });
 
   const nowISO = useMemo(() => dayjs().toISOString(), []);
 
@@ -94,27 +84,23 @@ const StudentAssignments = () => {
         return;
       }
 
-      // Firebase (fb) student profile
-      const stuDoc = await getDoc(doc(db, "Students", user.uid));
-      if (!stuDoc.exists()) {
-        setError("Student profile not found in Firebase.");
+      // Read student data from cache
+      const merged = readMergedStudentFromLocal();
+      if (!merged) {
+        setError("Student profile not found in cache. Please re-login.");
         setLoading(false);
         return;
       }
-      const fb = stuDoc.data();
-      setStudentFirebaseData(fb);
+      const norm = normalizeStudent(merged, user.uid);
+      setStudent(norm);
 
-      // Academic details from MongoDB
-      const mongoRes = await axios.get(`${API_BASE_URL}/api/students/${fb.firebaseId}`);
-      setStudentMongo(mongoRes.data);
-
-      //Firestore assignments filtered
+      // Fetch assignments by college/program/semester
       const assignmentsRef = collection(db, "assignments");
       const qA = query(
         assignmentsRef,
-        where("collegeId", "==", fb.collegeId),
-        where("program", "==", fb.program),
-        where("semester", "==", Number(mongoRes.data.semester)),
+        where("collegeId", "==", norm.collegeId),
+        where("program", "==", norm.program),
+        where("semester", "==", Number(norm.semester)),
         where("status", "==", "active")
       );
       const snap = await getDocs(qA);
@@ -141,7 +127,7 @@ const StudentAssignments = () => {
         const qS = query(
           subsRef,
           where("assignmentId", "==", a.id),
-          where("studentFirebaseId", "==", fb.firebaseId)
+          where("studentFirebaseId", "==", norm.firebaseUid)
         );
         const sSnap = await getDocs(qS);
         let latest = null;
@@ -157,7 +143,7 @@ const StudentAssignments = () => {
       }
       setLatestSubmission(subsByAssign);
 
-      // Preselect latest item on each tab after initial loading
+      // Preselect latest item on each tab
       setTimeout(() => {
         preselectFeatured("pending", list, subsByAssign);
         preselectFeatured("completed", list, subsByAssign);
@@ -234,7 +220,6 @@ const StudentAssignments = () => {
     e.target.value = "";
     if (!file) return;
 
-    // file size validation
     const maxSizeMB = 25;
     if (file.size > maxSizeMB * 1024 * 1024) {
       setError(`File too large. Max ${maxSizeMB} MB.`);
@@ -256,13 +241,13 @@ const StudentAssignments = () => {
       // Upload to firebase Storage
       const ts = Date.now();
       const safeName = file.name.replace(/\s+/g, "_");
-      const storagePath = `submissions/${assignment.id}/${studentFirebaseData.firebaseId}/${ts}_${safeName}`;
+      const storagePath = `submissions/${assignment.id}/${student?.firebaseUid}/${ts}_${safeName}`;
       const storageRef = ref(storage, storagePath);
       const task = uploadBytesResumable(storageRef, file, {
         contentType: file.type,
         customMetadata: {
           assignmentId: assignment.id,
-          studentId: studentFirebaseData.firebaseId,
+          studentId: student?.firebaseUid,
           subjectId: assignment.subjectId,
         },
       });
@@ -309,7 +294,6 @@ const StudentAssignments = () => {
         setError("Deadline has passed. Submission is closed.");
         return;
       }
-
       // rule for resubmission
       const hasPrev = !!latestSubmission[assignment.id];
       const allowResubmission =
@@ -318,7 +302,6 @@ const StudentAssignments = () => {
         setError("Resubmission is disabled for this assignment.");
         return;
       }
-
       // inputs
       const file = fileMeta[assignment.id] || null;
       const text = (textAnswer[assignment.id] || "").trim();
@@ -327,7 +310,6 @@ const StudentAssignments = () => {
         assignment.allowTextAnswer !== undefined ? assignment.allowTextAnswer : true;
       const requireFileUpload =
         assignment.requireFileUpload !== undefined ? assignment.requireFileUpload : false;
-
       // enforce rules
       if (!allowTextAnswer && !file) {
         setError("Text answers are disabled. Please upload a file.");
@@ -349,17 +331,17 @@ const StudentAssignments = () => {
         subjectName: assignment.subjectName,
         teacherId: assignment.teacherId,
         teacherName: assignment.teacherName,
-
+        
         collegeId: assignment.collegeId,
         program: assignment.program,
         semester: String(assignment.semester),
 
-        studentFirebaseId: auth.currentUser?.uid,
-        studentMongoId: studentMongo?._id,
-        enrollmentNo: studentMongo?.enrollmentNo,
-        studentName: `${studentFirebaseData.firstName} ${studentFirebaseData.lastName}`,
+        studentFirebaseId: student?.firebaseUid,
+        studentMongoId: student?.academicId || null,
+        enrollmentNo: student?.enrollmentNo || null,
+        studentName: `${student?.firstName || ""} ${student?.lastName || ""}`.trim(),
 
-        textAnswer: allowTextAnswer ? text || null : null,
+        textAnswer: allowTextAnswer ? (text || null) : null,
         fileUrl: file?.url || null,
         fileMeta: file
           ? {
@@ -603,7 +585,7 @@ const StudentAssignments = () => {
         )}
 
         {isUploading && (
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ mt: 1, }}>
             <LinearProgress variant="determinate" value={pct} sx={{ height: 10, borderRadius: 2 }} />
             <Typography variant="caption" color="text.secondary">
               Uploading… {pct}%
@@ -639,7 +621,7 @@ const StudentAssignments = () => {
       <Card sx={{ borderRadius: 3, boxShadow: "0 10px 36px rgba(0,0,0,0.10)" }}>
         <CardContent sx={{ p: { xs: 2.5, md: 3.5 }, maxWidth: '44vw', minWidth: {xs: '90vw', md: '44vw'} }}>
           {renderAssignmentDetails(a)}
-          <Stack sx={{mt: 2,}}></Stack>
+          <Stack sx={{mt: 2,}} />
           {renderSubmissionArea(a)}
         </CardContent>
       </Card>
@@ -711,38 +693,31 @@ const StudentAssignments = () => {
 
   if (loading) {
     return (
-      <Box display="flex" minHeight="60vh" alignItems="center" justifyContent="center">
+      <Box display="flex" minHeight="100vh" alignItems="center" justifyContent="center">
         <CircularProgress />
         <Typography sx={{ ml: 2 }}>Loading assignments…</Typography>
       </Box>
     );
   }
 
-  // Determine if we have "other assignments" to show on right
   const hasOther = otherAssignments && otherAssignments.length > 0;
 
   return (
-    <Box sx={{ backgroundColor: "#f5f5f5", minHeight: "100vh", py: 4 }}>
+    <Box sx={{  minHeight: "100vh", py: 4 }}>
       <Container maxWidth="xl">
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 2,
-            gap: 2,
-            flexWrap: "wrap",
-          }}
-        >
-          <Typography variant="h4" fontWeight="bold" color="primary.main">
-            Assignments
-          </Typography>
-          <Tooltip title="Refresh">
-            <IconButton onClick={init} color="primary" sx={{ bgcolor: "white", boxShadow: 1 }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
+                 <SecondaryHeader
+                            title="Assignments"
+                            leftArea={
+                              <HeaderBackButton />
+                            }
+                            rightArea={
+                               <Tooltip title="Refresh">
+                              <IconButton onClick={init} color="primary" sx={{ bgcolor: "white", boxShadow: 1 }}>
+                                <RefreshIcon />
+                              </IconButton>
+                            </Tooltip>
+                            }
+                          />
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -750,47 +725,12 @@ const StudentAssignments = () => {
           </Alert>
         )}
 
-        {/*header */}
-        {studentFirebaseData && (
-          <Card sx={{ mb: 3, bgcolor: "primary.main", color: "white" }}>
-            <CardContent>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item>
-                  <AssignmentIcon fontSize="large" />
-                </Grid>
-                <Grid item xs>
-                  <Typography variant="h6" fontWeight="bold">
-                    {studentFirebaseData.firstName} {studentFirebaseData.lastName}
-                  </Typography>
-                  <Stack direction="row" sx={{ mt: 1, flexWrap: "wrap", gap: 2}}>
-                    <Chip
-                      label={`College: ${studentFirebaseData.collegeId}`}
-                      sx={{ bgcolor: "white", color: "primary.main" }}
-                      variant="outlined"
-                    />
-                    <Chip
-                      label={`Program: ${studentFirebaseData.program}`}
-                      sx={{ bgcolor: "white", color: "primary.main" }}
-                      variant="outlined"
-                    />
-                    <Chip
-                      label={`Semester: ${studentMongo?.semester ?? "N/A"}`}
-                      sx={{ bgcolor: "white", color: "primary.main" }}
-                      variant="outlined"
-                    />
-                    {studentMongo?.enrollmentNo && (
-                      <Chip
-                        label={`Enroll: ${studentMongo.enrollmentNo}`}
-                        sx={{ bgcolor: "white", color: "primary.main" }}
-                        variant="outlined"
-                      />
-                    )}
-                  </Stack>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
+        {/* Student header from cache (replaces inline card) */}
+        <StudentHeader
+          extraTexts={[
+            { text: `College: ${student?.collegeId || "-"}` },
+          ]}
+        />
 
         {/* Tabs */}
         <Card sx={{ mb: 2 }}>

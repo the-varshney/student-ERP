@@ -6,7 +6,6 @@ import {
   Snackbar, Alert, CircularProgress, Stack, TextField, Divider, InputAdornment, Tabs, Tab
 } from '@mui/material';
 import { auth, db } from '../../firebase/Firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -16,15 +15,17 @@ import {
   ArrowBack as ArrowBackIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
+import { useAuth } from '../../context/AuthContext';
 import { LocalizationProvider, DatePicker, MobileTimePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
+import SecondaryHeader from "../../components/secondaryHeader";
+import { HeaderBackButton } from "../../components/header";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Helpers
 const formatTime12h = (t) =>
   t && dayjs.isDayjs(t) && t.isValid() ? t.format('hh:mm A') : '';
 const parseTime12h = (str) =>
@@ -46,6 +47,7 @@ const calcDurationHours = (start, end) => {
 const ExamScheduleCreator = () => {
   const [step, setStep] = useState(1);
   const [associate, setAssociate] = useState(null);
+  const { role, userDetails, loading: authLoading } = useAuth();
 
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -65,7 +67,6 @@ const ExamScheduleCreator = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [errors, setErrors] = useState({});
 
-  // Schedules list section
   const [tab, setTab] = useState('draft'); // or 'published'
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState('');
@@ -80,39 +81,37 @@ const ExamScheduleCreator = () => {
     return headers;
   };
 
-  useEffect(() => {
-    const bootstrapAssociate = async () => {
-      try {
-        setLoading(true);
-        setLoadingStep('Loading profile...');
-        const user = auth.currentUser;
-        if (!user) {
-          setSnackbar({ open: true, message: 'Please login as College Associate', severity: 'warning' });
-          return;
-        }
-        const aDoc = await getDoc(doc(db, 'Teachers', user.uid));
-        if (!aDoc.exists()) {
-          setSnackbar({ open: true, message: 'Associate profile not found', severity: 'error' });
-          return;
-        }
-        const aData = aDoc.data();
-        setAssociate(aData);
-
-        setLoadingStep('Loading departments...');
-        const deptRes = await axios.get(
-          `${API_BASE_URL}/api/colleges/${aData.college}/departments`,
-          { headers: await getAuthHeaders() }
-        );
-        setDepartments(deptRes.data || []);
-      } catch {
-        setSnackbar({ open: true, message: 'Failed to init associate data', severity: 'error' });
-      } finally {
-        setLoading(false);
-        setLoadingStep('');
+useEffect(() => {
+  const bootstrapAssociate = async () => {
+    if (authLoading) return;
+    
+    try {
+      setLoading(true);
+      setLoadingStep('Loading profile...');
+      
+      const isCollegeAssociate = userDetails?.isCollegeAssociate || role === "CollegeAssociate";
+      if (!isCollegeAssociate || !userDetails?.college) {
+        setSnackbar({ open: true, message: 'Access denied. College Associate role with assigned college required.', severity: 'error' });
+        return;
       }
-    };
-    bootstrapAssociate();
-  }, []);
+
+      setAssociate(userDetails);
+
+      setLoadingStep('Loading departments...');
+      const deptRes = await axios.get(
+        `${API_BASE_URL}/api/colleges/${userDetails.college}/departments`,
+        { headers: await getAuthHeaders() }
+      );
+      setDepartments(deptRes.data || []);
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to init associate data', severity: 'error' });
+    } finally {
+      setLoading(false);
+      setLoadingStep('');
+    }
+  };
+  bootstrapAssociate();
+}, [authLoading, userDetails, role]);
 
   // Academic year
   useEffect(() => {
@@ -254,7 +253,6 @@ const ExamScheduleCreator = () => {
     setStep(2);
   };
 
-  // Auto-calc duration when both times present
   const handleExamTimeChange = (id, changes) => {
     setExams((prev) =>
       prev.map((exam) => {
@@ -382,7 +380,6 @@ const ExamScheduleCreator = () => {
     }
   };
 
-  // Lists loader
   const refreshScheduleLists = useCallback(async () => {
     if (!associate?.college) return;
     setListError('');
@@ -392,8 +389,6 @@ const ExamScheduleCreator = () => {
 
       const haveFilters =
         selectedDept || selectedProgram || selectedSemester || academicYear || (examMonthYear?.isValid?.());
-
-      // DRAFT list
       try {
         const resDraft = await axios.get(`${API_BASE_URL}/api/exam-schedules/list`, {
           params: {
@@ -410,7 +405,6 @@ const ExamScheduleCreator = () => {
         });
         setDraftList(Array.isArray(resDraft.data) ? resDraft.data : []);
       } catch {
-        // Fallback to single draft schedule if filtered sufficiently
         if (selectedDept && selectedProgram && selectedSemester && academicYear && examMonthYear?.isValid?.()) {
           try {
             const one = await axios.get(`${API_BASE_URL}/api/exam-schedules/draft`, {
@@ -522,7 +516,7 @@ const ExamScheduleCreator = () => {
     }
   };
 
-  if (!associate) {
+  if (authLoading || !associate){
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -637,9 +631,7 @@ const ExamScheduleCreator = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ p: 3, maxWidth: 1400, minHeight: '100vh', mx: 'auto' }}>
-        <Typography variant="h4" gutterBottom>
-          Create Exam Schedule
-        </Typography>
+        <SecondaryHeader title="Create Exam Schedule" leftArea={<HeaderBackButton/>}/>
 
         {step === 1 ? (
           <>

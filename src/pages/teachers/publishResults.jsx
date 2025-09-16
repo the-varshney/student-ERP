@@ -5,8 +5,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar,
   Alert, CircularProgress, Stack, Chip, IconButton, Tooltip, Divider
 } from "@mui/material";
-import { auth, db } from '../../firebase/Firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 import {
   Refresh as RefreshIcon,
   CheckCircle as PublishIcon,
@@ -14,8 +13,39 @@ import {
   Visibility as PreviewIcon
 } from "@mui/icons-material";
 import axios from "axios";
+import SecondaryHeader from "../../components/secondaryHeader";
+import { HeaderBackButton } from "../../components/header";
 
-// Components used for each result moodule
+const NS = "erp";
+const VER = "v1";
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+
+const cache = {
+  set(key, data, ttlMs = CACHE_TTL) {
+    const payload = { v: data, exp: Date.now() + ttlMs };
+    try {
+      localStorage.setItem(`${NS}:${key}:${VER}`, JSON.stringify(payload));
+    } catch { //
+       }
+  },
+  get(key) {
+    const k = `${NS}:${key}:${VER}`;
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) return null;
+      const payload = JSON.parse(raw);
+      if (payload?.exp && Date.now() > payload.exp) {
+        localStorage.removeItem(k);
+        return null;
+      }
+      return payload.v ?? null;
+    } catch {
+      return null;
+    }
+  }
+};
+
+// Components used for each result module
 const RESULT_COMPONENTS = [
   { key: 'midSem', label: 'Mid' },
   { key: 'endSem', label: 'End' },
@@ -26,18 +56,23 @@ const RESULT_COMPONENTS = [
   { key: 'internal', label: 'Internal' }
 ];
 
-// Light pastel colors per subject group
-const SUBJECT_COLORS = [
-  '#F3F8FF', 
-  '#F7FFEE', 
-  '#FFF6F3', 
-  '#FFF9E8', 
-  '#F5F0FF', 
-  '#EFFCFB', 
-  '#FFF0F7'  
-];
+const getSubjectColors = (isDark) => {
+  if (isDark) {
+    return [
+      '#1a237e', '#2e7d32', '#d84315', '#f57c00', 
+      '#7b1fa2', '#00838f', '#c2185b'
+    ];
+  }
+  return [
+    '#F3F8FF', '#F7FFEE', '#FFF6F3', '#FFF9E8', 
+    '#F5F0FF', '#EFFCFB', '#FFF0F7'
+  ];
+};
 
 const AssociatePublishResults = () => {
+  // Auth context
+  const { role, userDetails, loading: authLoading } = useAuth();
+  
   const [associate, setAssociate] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -60,30 +95,32 @@ const AssociatePublishResults = () => {
 
   useEffect(() => {
     bootstrapAssociate();
-  }, []);
+  }, [authLoading, userDetails, role]);
 
   const bootstrapAssociate = async () => {
+    if (authLoading) return;
+    
     try {
       setLoading(true);
       setLoadingStep('Loading profile...');
-      const user = auth.currentUser;
-      if (!user) {
-        setSnackbar({ open: true, message: 'Please login as College Associate', severity: 'warning' });
-        setLoading(false);
+      
+      const isCollegeAssociate = userDetails?.isCollegeAssociate || role === "CollegeAssociate";
+      if (!isCollegeAssociate || !userDetails?.college) {
+        setSnackbar({ open: true, message: 'Access denied. College Associate role with assigned college required.', severity: 'error' });
         return;
       }
-      const aDoc = await getDoc(doc(db, 'Teachers', user.uid));
-      if (!aDoc.exists()) {
-        setSnackbar({ open: true, message: 'Associate profile not found', severity: 'error' });
-        setLoading(false);
-        return;
-      }
-      const aData = aDoc.data();
-      setAssociate(aData);
+
+      setAssociate(userDetails);
 
       setLoadingStep('Loading departments...');
-      const deptRes = await axios.get(`${API_BASE_URL}/api/colleges/${aData.college}/departments`);
-      setDepartments(deptRes.data || []);
+      const cacheKey = `college-${userDetails.college}-departments`;
+      let data = cache.get(cacheKey);
+      if (!data) {
+        const deptRes = await axios.get(`${API_BASE_URL}/api/colleges/${userDetails.college}/departments`);
+        data = deptRes.data || [];
+        cache.set(cacheKey, data);
+      }
+      setDepartments(data);
     } catch (e) {
       setSnackbar({ open: true, message: 'Failed to init associate data', severity: 'error' });
     } finally {
@@ -96,8 +133,14 @@ const AssociatePublishResults = () => {
     try {
       setLoading(true);
       setLoadingStep('Loading programs...');
-      const progRes = await axios.get(`${API_BASE_URL}/api/departments/${associate.college}/${deptId}/programs`);
-      setPrograms(progRes.data || []);
+      const cacheKey = `college-${associate.college}-dept-${deptId}-programs`;
+      let data = cache.get(cacheKey);
+      if (!data) {
+        const progRes = await axios.get(`${API_BASE_URL}/api/departments/${associate.college}/${deptId}/programs`);
+        data = progRes.data || [];
+        cache.set(cacheKey, data);
+      }
+      setPrograms(data);
     } catch (e) {
       setSnackbar({ open: true, message: 'Failed to load programs', severity: 'error' });
     } finally {
@@ -109,8 +152,14 @@ const AssociatePublishResults = () => {
     try {
       setLoading(true);
       setLoadingStep('Loading subjects...');
-      const subjRes = await axios.get(`${API_BASE_URL}/api/programs/${programId}/semesters/${semester}/subjects`);
-      setSubjects(subjRes.data || []);
+      const cacheKey = `program-${programId}-sem-${semester}-subjects`;
+      let data = cache.get(cacheKey);
+      if (!data) {
+        const subjRes = await axios.get(`${API_BASE_URL}/api/programs/${programId}/semesters/${semester}/subjects`);
+        data = subjRes.data || [];
+        cache.set(cacheKey, data);
+      }
+      setSubjects(data);
     } catch (e) {
       setSnackbar({ open: true, message: 'Failed to load subjects', severity: 'error' });
     } finally {
@@ -260,7 +309,8 @@ const AssociatePublishResults = () => {
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', maxWidth: 1500, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom>Publish Results (College Associate)</Typography>
+      <SecondaryHeader title="Publish Results"
+      leftArea={<HeaderBackButton/>}/>
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -303,7 +353,7 @@ const AssociatePublishResults = () => {
                 onChange={(e) => {
                   setSelectedSemester(e.target.value);
                   setSubjects([]); setStudents([]); setMarks({});
-                  if (e.target.value) loadSubjects(e.target.value ? selectedProgram : '', e.target.value);
+                  if (e.target.value) loadSubjects(selectedProgram, e.target.value);
                 }}
               >
                 {semesters.map(s => <MenuItem key={s} value={s}>{`Semester ${s}`}</MenuItem>)}
@@ -359,12 +409,12 @@ const AssociatePublishResults = () => {
               <TableRow>
                 <TableCell
                   rowSpan={2}
-                  sx={{ fontWeight: 'bold', bgcolor: 'grey.100', position: 'sticky', left: 0, zIndex: 3 }}
+                  sx={{ fontWeight: 'bold',position: 'sticky', left: 0, zIndex: 3 }}
                 >
                   Enrollment No
                 </TableCell>
                 {subjects.map((sub, idx) => {
-                  const bg = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
+                  const bg = getSubjectColors[idx % getSubjectColors.length];
                   return (
                     <TableCell
                       key={sub._id}
@@ -379,7 +429,7 @@ const AssociatePublishResults = () => {
               </TableRow>
               <TableRow>
                 {subjects.flatMap((sub, idx) => {
-                  const bg = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
+                  const bg = getSubjectColors[idx % getSubjectColors.length];
                   return RESULT_COMPONENTS.map((c, ci) => (
                     <TableCell
                       key={`${sub._id}-${c.key}`}
@@ -407,7 +457,6 @@ const AssociatePublishResults = () => {
                         position: 'sticky',
                         left: 0,
                         zIndex: 2,
-                        bgcolor: 'white'
                       }}
                     >
                       {stu.enrollmentNo || 'N/A'}

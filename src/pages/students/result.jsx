@@ -2,50 +2,28 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
-  Container,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Box,
-  CircularProgress,
-  Alert,
-  Card,
-  CardContent,
-  Grid,
-  Modal,
-  LinearProgress,
-  Button,
-  Chip,
-  Avatar,
-  Stack,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider,
-  IconButton,
-  Tooltip
+  Container, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper, Box, CircularProgress, Alert, Card, CardContent, Grid, Modal, LinearProgress,
+  Button, Chip, Stack, FormControl, InputLabel, Select, MenuItem, Divider, IconButton,
+  Tooltip, useTheme
 } from "@mui/material";
 import {
-  CalendarToday as CalendarIcon,
-  Person as PersonIcon,
   Subject as SubjectIcon,
-  Email as EmailIcon,
-  Badge as BadgeIcon,
-  School as SchoolIcon,
-  MenuBook as BookIcon,
-  Refresh as RefreshIcon,
-  History as HistoryIcon
+  Refresh as RefreshIcon, History as HistoryIcon,
 } from "@mui/icons-material";
-import { auth, db } from '../../firebase/Firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth } from "../../firebase/Firebase";
+import StudentHeader from "../../components/StudentHeader";
+import SecondaryHeader from "../../components/secondaryHeader";
+import { HeaderBackButton } from "../../components/header";
 
-// Helper to compute a normalized score out of 100 for a subject
+const NS = "erp";
+const VER = "v1";
+const key = (uid, name) => `${NS}:${uid}:${name}:${VER}`;
+const parseCache = (raw) => {
+  try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+};
+
+// Normalize scores to /100 
 const computeSubjectOutOf100 = (scoresMap) => {
   if (!scoresMap) return { totalObtained: 0, totalMax: 0, outOf100: 0 };
   let totalObtained = 0;
@@ -63,26 +41,35 @@ const computeSubjectOutOf100 = (scoresMap) => {
 };
 
 const Results = () => {
-  const [studentFirebaseData, setStudentFirebaseData] = useState(null);
-  const [studentAcademic, setStudentAcademic] = useState(null);
+  const theme = useTheme();
+  const [student, setStudent] = useState(null); // merged student object from local cache
   const [currentSemester, setCurrentSemester] = useState(null);
   const [subjectResults, setSubjectResults] = useState([]);
   const [availableSemesters, setAvailableSemesters] = useState([]);
   const [selectedViewSemester, setSelectedViewSemester] = useState('current');
-  const [publishStatus, setPublishStatus] = useState(null); 
+  const [publishStatus, setPublishStatus] = useState(null);
   const [previewStatus, setPreviewStatus] = useState(null);
-
-  // UI/UX state
   const [loading, setLoading] = useState(true);
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState(null);
   const [openSubjectModal, setOpenSubjectModal] = useState(false);
-  const [modalSubject, setModalSubject] = useState(null); 
+  const [modalSubject, setModalSubject] = useState(null);
   const [sortBy, setSortBy] = useState('default');
   const [showInfoBanner, setShowInfoBanner] = useState(false);
-const [showPreviewBanner, setShowPreviewBanner] = useState(false);
+  const [showPreviewBanner, setShowPreviewBanner] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+  const readMergedStudentFromLocal = () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return null;
+    const mergedRaw = localStorage.getItem(key(uid, "student"));
+    const mergedEntry = parseCache(mergedRaw);
+    const merged = mergedEntry?.v || null;
+    if (merged) return merged;
+    const legacyRaw = localStorage.getItem(`userDetails_${uid}`);
+    try { return legacyRaw ? JSON.parse(legacyRaw) : null; } catch { return null; }
+  };
 
   useEffect(() => {
     fetchResults();
@@ -92,7 +79,8 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
     try {
       setLoading(true);
       setError(null);
-      setLoadingStep('Loading student profile from Firebase...');
+      setLoadingStep('Loading student profile...');
+
       const user = auth.currentUser;
       if (!user) {
         setError("Please log in to view results.");
@@ -100,40 +88,33 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
         return;
       }
 
-      // Firebase student doc 
-      const studentDoc = await getDoc(doc(db, 'Students', user.uid));
-      if (!studentDoc.exists()) {
-        setError("Student Firebase profile not found.");
+      const merged = readMergedStudentFromLocal();
+      if (!merged) {
+        setError("Student data not found locally. Please re-login.");
         setLoading(false);
         return;
       }
-      const firebaseData = studentDoc.data();
-      setStudentFirebaseData(firebaseData);
-
-      // Academic data from Mongo (to get _id, program, semester, enrollmentNo, department)
-      setLoadingStep('Loading academic details...');
-      const acadRes = await axios.get(`${API_BASE_URL}/api/students/${firebaseData.firebaseId}`);
-      const academic = acadRes.data;
-      setStudentAcademic(academic);
-
-      // Determine semester to view
+      setStudent(merged);
+      // get semester to view
       const semToView = selectedViewSemester === 'current'
-        ? String(academic.semester)
+        ? String(merged.Semester || "")
         : String(selectedViewSemester);
-      setCurrentSemester(String(academic.semester));
+      setCurrentSemester(String(merged.Semester || ""));
 
       // Build available previous semesters list
-      const curSemNum = parseInt(academic.semester, 10);
+      const curSemNum = parseInt(merged.Semester, 10);
       const prevSems = [];
-      for (let i = 1; i < curSemNum; i++) prevSems.push(String(i));
+      if (!Number.isNaN(curSemNum)) {
+        for (let i = 1; i < curSemNum; i++) prevSems.push(String(i));
+      }
       setAvailableSemesters(prevSems);
 
-      // Check publish and preview visibility first
+      // Checking publish and preview visibility first
       setLoadingStep('Checking result visibility...');
       const statusParams = {
-        collegeId: academic.collegeId || firebaseData.collegeId,
-        departmentId: academic.department, 
-        programId: academic.program, 
+        collegeId: merged.collegeId,
+        departmentId: merged.Department,
+        programId: merged.Program || merged.program,
         semester: semToView
       };
 
@@ -149,7 +130,6 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
                         (prevRes.data && prevRes.data.previewPublished);
 
       if (!isVisible) {
-        // stop here with message
         setSubjectResults([]);
         setLoading(false);
         setLoadingStep('');
@@ -158,24 +138,25 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
 
       // Load subjects for program + semester
       setLoadingStep('Loading subjects for this semester...');
-      const subjectsRes = await axios.get(`${API_BASE_URL}/api/programs/${academic.program}/semesters/${semToView}/subjects`);
+      const programForSubjects = merged.Program || merged.program;
+      const subjectsRes = await axios.get(`${API_BASE_URL}/api/programs/${programForSubjects}/semesters/${semToView}/subjects`);
       const subjectList = subjectsRes.data || [];
 
       // For each subject, get marks map and extract only current student's scores
       setLoadingStep('Loading subject-wise results...');
       const resultsForSubjects = [];
+      const studentId = String(merged?._academic?._id || "");
       for (const subj of subjectList) {
         const marksRes = await axios.get(`${API_BASE_URL}/api/results/student-marks`, {
           params: {
-            collegeId: academic.collegeId || firebaseData.collegeId,
-            program: academic.program,
+            collegeId: merged.collegeId,
+            program: programForSubjects,
             semester: semToView,
             subject: subj._id
           }
         });
 
-        const studentId = String(academic._id);
-        const subjectScoresMap = marksRes.data?.studentMarks?.[studentId] || {}; // {component: {obtained, max}}
+        const subjectScoresMap = studentId ? (marksRes.data?.studentMarks?.[studentId] || {}) : {};
         const { totalObtained, totalMax, outOf100 } = computeSubjectOutOf100(subjectScoresMap);
 
         resultsForSubjects.push({
@@ -190,7 +171,6 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
 
       setSubjectResults(resultsForSubjects);
     } catch (err) {
-      console.error('Error fetching results:', err);
       setError("Failed to fetch results. " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
@@ -227,13 +207,13 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
 
   const getScoreColor = (val) => {
     const pct = Number(val);
-    if (Number.isNaN(pct)) return '#757575';
-    if (pct < 45) return '#F44336';
-    if (pct < 75) return '#FF9800';
-    return '#4CAF50';
+    if (Number.isNaN(pct)) return theme.palette.text.secondary;
+    if (pct < 45) return theme.palette.error.main;
+    if (pct < 75) return theme.palette.warning.main;
+    return theme.palette.success.main;
   };
 
-  // Subjects sorting 
+  // Sorting
   const sortedSubjects = useMemo(() => {
     const arr = [...subjectResults];
     switch (sortBy) {
@@ -249,34 +229,32 @@ const [showPreviewBanner, setShowPreviewBanner] = useState(false);
     return arr;
   }, [subjectResults, sortBy]);
 
-  // Visibility banners
   const isPublished = !!publishStatus?.published;
   const isPreview = !!previewStatus?.previewPublished;
   const notVisible = !isPublished && !isPreview;
 
-    useEffect(() => {
-  setShowInfoBanner(notVisible);
-  if (notVisible) {
-    const t = setTimeout(() => setShowInfoBanner(false), 10000); // 10s
-    return () => clearTimeout(t);
-  }
-}, [notVisible]);
+  useEffect(() => {
+    setShowInfoBanner(notVisible);
+    if (notVisible) {
+      const t = setTimeout(() => setShowInfoBanner(false), 10000);
+      return () => clearTimeout(t);
+    }
+  }, [notVisible]);
 
-useEffect(() => {
-  // preview banner (isPreview && !isPublished)
-  const activePreview = !notVisible && isPreview && !isPublished;
-  setShowPreviewBanner(activePreview);
-  if (activePreview) {
-    const t = setTimeout(() => setShowPreviewBanner(false), 10000); // 10s
-    return () => clearTimeout(t);
-  }
-}, [notVisible, isPreview, isPublished]);
+  useEffect(() => {
+    const activePreview = !notVisible && isPreview && !isPublished;
+    setShowPreviewBanner(activePreview);
+    if (activePreview) {
+      const t = setTimeout(() => setShowPreviewBanner(false), 10000);
+      return () => clearTimeout(t);
+    }
+  }, [notVisible, isPreview, isPublished]);
 
   if (loading) {
     return (
-      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: theme.palette.background.default }}>
         <CircularProgress size={60} />
-        <Typography sx={{ mt: 2 }} variant="h6">
+        <Typography sx={{ mt: 2 }} variant="h6" color="text.secondary">
           {loadingStep || 'Loading results...'}
         </Typography>
       </Box>
@@ -284,116 +262,76 @@ useEffect(() => {
   }
 
   return (
-    <Box sx={{ backgroundColor: "#f5f5f5", minHeight: "100vh", py: 4 }}>
+    <Box sx={{ backgroundColor: theme.palette.background.default, minHeight: "100vh", py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header*/}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="h4" fontWeight="bold" color="primary.main" component="h1">
-            Results Dashboard
-          </Typography>
+        <SecondaryHeader
+          title="Results Dashboard"
+          leftArea={
+            <HeaderBackButton />
+          }
+          rightArea={
+            <Stack direction="row" spacing={2} alignItems="center">
+              <FormControl size="small" sx={{ maxWidth:{xs:"50%", md:"500px"} }}>
+                <InputLabel>View Semester</InputLabel>
+                <Select
+                  value={selectedViewSemester}
+                  label="View Semester"
+                  onChange={(e) => setSelectedViewSemester(e.target.value)}
+                  startAdornment={<HistoryIcon sx={{ mr: 1 }} />}
+                >
+                  <MenuItem value="current">Current Semester</MenuItem>
+                  {availableSemesters.map((sem) => (
+                    <MenuItem key={sem} value={sem}>
+                      Semester {sem} (Previous)
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Tooltip title="Refresh Data">
+                <IconButton
+                  onClick={handleRefresh}
+                  color="primary"
+                  sx={{ bgcolor: theme.palette.background.paper, boxShadow: 1 }}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          }
+        />
 
-          <Stack direction="row" spacing={2} alignItems="center">
-            {/* Semester Selection */}
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>View Semester</InputLabel>
-              <Select
-                value={selectedViewSemester}
-                label="View Semester"
-                onChange={(e) => setSelectedViewSemester(e.target.value)}
-                startAdornment={<HistoryIcon sx={{ mr: 1 }} />}
-              >
-                <MenuItem value="current">Current Semester</MenuItem>
-                {availableSemesters.map((sem) => (
-                  <MenuItem key={sem} value={sem}>
-                    Semester {sem} (Previous)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Refresh Button */}
-            <Tooltip title="Refresh Data">
-              <IconButton
-                onClick={handleRefresh}
-                color="primary"
-                sx={{ bgcolor: 'white', boxShadow: 1 }}
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Box>
-
-        {/* banners */}
+        {/* Banners */}
         {notVisible && showInfoBanner && (
-  <Alert severity="info" sx={{ mb: 3 }}>
-    Results for {getSemesterDisplayText()} are not yet available. Please check back later when the college publishes or previews the results.
-  </Alert>
-)}
+          <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+            Results for {getSemesterDisplayText()} are not yet available. Please check back later when the college publishes or previews the results.
+          </Alert>
+        )}
 
-{!notVisible && isPreview && !isPublished && showPreviewBanner && (
-  <Alert severity="warning" sx={{ mb: 3 }}>
-    Preview results are visible for {getSemesterDisplayText()}. These are not final and may change before publication.
-  </Alert>
-)}
+        {!notVisible && isPreview && !isPublished && showPreviewBanner && (
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+            Preview results are visible for {getSemesterDisplayText()}. These are not final and may change before publication.
+          </Alert>
+        )}
 
         {/* Error */}
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
-        {/* Student data Card */}
-        {!error && studentFirebaseData && studentAcademic && (
-          <Card sx={{ mb: 3, bgcolor: 'primary.main', color: 'white' }}>
-            <CardContent>
-              <Grid container spacing={3} justifyContent={'space-evenly'} sx={{ width: '100%', margin: 0 }}>
-                <Grid item>
-                  <Avatar
-                    src={studentFirebaseData?.profilePicUrl}
-                    sx={{ width: 80, height: 80, bgcolor: 'white', color: 'primary.main' }}
-                  >
-                    <PersonIcon fontSize="large" />
-                  </Avatar>
-                </Grid>
-                <Grid item xs>
-                  <Typography variant="h5" fontWeight="bold">
-                    {studentFirebaseData?.firstName} {studentFirebaseData?.lastName}
-                  </Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ mt: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <EmailIcon fontSize="small" />
-                      <Typography variant="body1">{studentFirebaseData?.email}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <BadgeIcon fontSize="small" />
-                      <Typography variant="body1">{studentAcademic?.enrollmentNo}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <SchoolIcon fontSize="small" />
-                      <Typography variant="body1">{studentAcademic?.department?.departmentName || studentAcademic?.department}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <BookIcon fontSize="small" />
-                      <Typography variant="body1">
-                        {studentAcademic?.program?.programName || studentAcademic?.program} : {getSemesterDisplayText()}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+        {/* Student header */}
+        {!error && student && (
+          <StudentHeader />
         )}
 
         {/* Hide analytics/cards if not visible yet */}
         {!notVisible && (
           <>
             {/* Overall Results Summary */}
-            <Card sx={{ mb: 3 }}>
+            <Card sx={{ mb: 3, borderRadius: 2, boxShadow: 3 }}>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   Overall Semester Summary
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={8}>
+                <Grid container spacing={3} alignItems="center">
+                  <Grid item xs={12} md={6}>
                     <Typography variant="h4" fontWeight="bold" color="primary.main">
                       {overallStats.percent}%
                     </Typography>
@@ -413,23 +351,25 @@ useEffect(() => {
                       Computed from total {overallStats.sumObtained} of {overallStats.sumMax} marks across all subjects
                     </Typography>
                   </Grid>
-                  <Box alignItems="flex-end" sx={{ bottom: "100%", display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1, height: '13vh' }}>
-                    <Chip label={`Total Obtained: ${overallStats.sumObtained}`} color="success" variant="outlined" />
-                    <Chip label={`Total Max: ${overallStats.sumMax}`} color="primary" variant="outlined" />
-                    {isPreview && !isPublished && (
-                      <Chip label="Preview" color="warning" variant="filled" />
-                    )}
-                    {isPublished && (
-                      <Chip label="Published" color="success" variant="filled" />
-                    )}
-                  </Box>
+                  <Grid item xs={12} md={6}>
+                    <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+                      <Chip label={`Total Obtained: ${overallStats.sumObtained}`} color="success" variant="outlined" />
+                      <Chip label={`Total Max: ${overallStats.sumMax}`} color="primary" variant="outlined" />
+                      {isPreview && !isPublished && (
+                        <Chip label="Preview" color="warning" variant="filled" />
+                      )}
+                      {isPublished && (
+                        <Chip label="Published" color="success" variant="filled" />
+                      )}
+                    </Stack>
+                  </Grid>
                 </Grid>
               </CardContent>
             </Card>
 
-            {/*controls */}
+            {/* Controls */}
             {subjectResults.length > 0 && (
-              <Card sx={{ mb: 3 }}>
+              <Card sx={{ mb: 3, borderRadius: 2, boxShadow: 3 }}>
                 <CardContent>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>
                     Sort Subjects
@@ -461,14 +401,14 @@ useEffect(() => {
               </Card>
             )}
 
-            {/* Subject-wise Results Cards */}
+            {/* Subject-wise Results */}
             <>
               <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
                 Subject-wise Results - {getSemesterDisplayText()}
               </Typography>
 
               {subjectResults.length === 0 ? (
-                <Alert severity="info">
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
                   {selectedViewSemester === 'current'
                     ? "No result components have been published yet for the current semester."
                     : `No results found for Semester ${selectedViewSemester}.`
@@ -480,18 +420,18 @@ useEffect(() => {
                     <Grid item xs={12} sm={6} md={4} lg={3} key={subject.subjectId}>
                       <Card
                         sx={{
-                          backgroundColor: "#ffffff",
-                          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                          borderRadius: "16px",
+                          backgroundColor: theme.palette.background.paper,
+                          boxShadow: 3,
+                          borderRadius: 3,
                           textAlign: "center",
-                          minWidth: { xs: '90vw', md: '60vh' },
                           p: 3,
                           cursor: "pointer",
+                          minWidth:{md:"30vw", xs:"90vw"},
                           transition: "all 0.3s ease-in-out",
                           border: `2px solid ${getScoreColor(subject.outOf100)}`,
                           "&:hover": {
                             transform: "translateY(-4px)",
-                            boxShadow: "0 8px 24px rgba(134, 161, 202, 0.6)"
+                            boxShadow: 8
                           }
                         }}
                         onClick={() => handleOpenSubject(subject)}
@@ -540,14 +480,14 @@ useEffect(() => {
 
             {/* Subject Details Modal */}
             <Modal open={openSubjectModal} onClose={handleCloseSubject}>
-              <Box
+              <Paper
                 sx={{
                   position: "absolute",
                   top: "50%",
                   left: "50%",
                   transform: "translate(-50%, -50%)",
                   width: { xs: "95%", sm: "80%", md: "70%" },
-                  bgcolor: "background.paper",
+                  bgcolor: theme.palette.background.paper,
                   borderRadius: "16px",
                   boxShadow: 24,
                   p: 4,
@@ -566,9 +506,9 @@ useEffect(() => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ fontWeight: "bold" }}>Component</TableCell>
-                            <TableCell sx={{ fontWeight: "bold" }}>Obtained</TableCell>
-                            <TableCell sx={{ fontWeight: "bold" }}>Max</TableCell>
+                            <TableCell sx={{ fontWeight: "bold", bgcolor: theme.palette.background.default }}>Component</TableCell>
+                            <TableCell sx={{ fontWeight: "bold", bgcolor: theme.palette.background.default }}>Obtained</TableCell>
+                            <TableCell sx={{ fontWeight: "bold", bgcolor: theme.palette.background.default }}>Max</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -603,7 +543,7 @@ useEffect(() => {
                     </TableContainer>
                   </>
                 )}
-              </Box>
+              </Paper>
             </Modal>
           </>
         )}

@@ -1,20 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Tabs,
-  Tab,
-  Button,
-  Stack,
-  TextField,
-  Select,
-  MenuItem,
-  Chip,
-  Alert,
-  LinearProgress,
-  FormHelperText,
-  Paper,
+import { Box, Container, Typography, Tabs, Tab, Button, Stack, TextField, Select, MenuItem, Chip, Alert, LinearProgress, 
+  FormHelperText, Paper,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -26,6 +12,8 @@ import { db, storage } from '../../firebase/Firebase';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Library from '../students/library';
+ import { HeaderBackButton } from "../../components/header";
+ import SecondaryHeader from "../../components/secondaryHeader";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const MAX_PDF_BYTES = 20 * 1024 * 1024; 
@@ -63,7 +51,6 @@ export default function TeacherLibrary() {
   const [loadError, setLoadError] = useState('');
   const [viewMode, setViewMode] = useState('all');
 
-  // API fetch helpers with authentication
   const getAuthHeaders = async () => {
     const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
     if (user) {
@@ -97,7 +84,6 @@ export default function TeacherLibrary() {
     }
   };
 
-  // Load catalog
   useEffect(() => {
     let active = true;
     (async () => {
@@ -282,7 +268,6 @@ export default function TeacherLibrary() {
       const docRef = doc(collection(db, 'books'));
       const bookId = docRef.id;
 
-      // Upload PDF
       const pdfPath = `books/${bookId}/${encodeURIComponent(pdfFile.name)}`;
       const pdfRef = ref(storage, pdfPath);
       const pdfTask = uploadBytesResumable(pdfRef, pdfFile, { contentType: pdfFile.type });
@@ -295,7 +280,6 @@ export default function TeacherLibrary() {
         );
       });
 
-      // Optional cover image
       let coverURL = '';
       if (coverFile) {
         const coverPath = `books/${bookId}/cover-${Date.now()}-${encodeURIComponent(coverFile.name)}`;
@@ -306,7 +290,6 @@ export default function TeacherLibrary() {
         });
         coverURL = await getDownloadURL(coverRef);
       }
-
 
       const payload = {
         title: form.title.trim(),
@@ -355,7 +338,6 @@ export default function TeacherLibrary() {
     }
   };
 
-  // Menus
   const programMenuItems = programs.map((p) => (
     <MenuItem key={p._id} value={p._id}>{p.name || p.title || p.code || p._id}</MenuItem>
   ));
@@ -371,41 +353,42 @@ export default function TeacherLibrary() {
   const formInvalid = uploading || !form.title.trim() || !form.author.trim() || !!errors.year || !!errors.pdf || !!errors.tags || !pdfFile;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 6, bgcolor: 'grey.50', minHeight: '100vh' }}>
+    <Container maxWidth="lg" sx={{ py: 6, minHeight: '100vh', minWidth:'100vw'}}>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} color="primary.main">
-            Teacher Library
-          </Typography>
-        </Stack>
-
-        {catalogError && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{catalogError}</Alert>
+        <SecondaryHeader
+          title={"Teacher Library"}
+          rightArea={<Stack>{catalogError && (
+          <Alert severity="error" sx={{borderRadius: 2 }}>{catalogError}</Alert>
         )}
-
         <Tabs
           value={tab}
           onChange={(_, v) => setTab(v)}
+          centered
           sx={{
-            mb: 4,
-            bgcolor: 'white',
             borderRadius: 2,
             boxShadow: 1,
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "1.1rem",
             '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 },
+            "& .Mui-selected": {
+                  color: "primary.main",
+                },
             '& .MuiTabs-indicator': { backgroundColor: 'primary.main' },
           }}
         >
           <Tab value="upload" label="Upload Book" />
           <Tab value="library" label="Library" />
-        </Tabs>
-
+        </Tabs></Stack>}/>
+      
         {tab === 'upload' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-            <Paper elevation={3} sx={{ p: 4, borderRadius: 3, bgcolor: 'white' }}>
-              <Typography variant="h5" fontWeight={600} sx={{ mb: 3, color: 'text.primary' }}>
-                Upload New Book
-              </Typography>
-
+            <Paper elevation={3} sx={{ p: 4, borderRadius: 3}}>
+              <SecondaryHeader
+                title="Upload New Book"
+                subtitle="Fields marked with * are required."
+                leftArea={<HeaderBackButton />}
+                />
               <Box component="form" onSubmit={handleSubmit}>
                 <Stack spacing={3}>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -416,7 +399,7 @@ export default function TeacherLibrary() {
                       fullWidth
                       required
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     />
                     <TextField
                       label="Author"
@@ -425,7 +408,7 @@ export default function TeacherLibrary() {
                       fullWidth
                       required
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     />
                   </Stack>
 
@@ -446,7 +429,7 @@ export default function TeacherLibrary() {
                         }));
                       }}
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     >
                       <MenuItem value=""><em>Select Program (Optional)</em></MenuItem>
                       {programMenuItems}
@@ -458,7 +441,7 @@ export default function TeacherLibrary() {
                       onChange={(e) => setForm((s) => ({ ...s, semester: e.target.value, subjectId: '', subjectName: '' }))}
                       disabled={!form.programId}
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     >
                       <MenuItem value=""><em>Select Semester (Optional)</em></MenuItem>
                       {semesterMenuItems}
@@ -472,7 +455,7 @@ export default function TeacherLibrary() {
                       }}
                       disabled={!form.programId || !form.semester}
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     >
                       <MenuItem value=""><em>Select Subject (Optional)</em></MenuItem>
                       {subjectMenuItems}
@@ -499,7 +482,6 @@ export default function TeacherLibrary() {
                         borderColor: errors.tags ? 'error.main' : 'grey.300',
                         borderRadius: 1,
                         p: 1,
-                        bgcolor: 'white',
                       }}
                     >
                       {form.tags.map((tag) => (
@@ -514,7 +496,7 @@ export default function TeacherLibrary() {
                             height: '24px',
                             fontSize: '0.75rem',
                             m: 0.5,
-                            '& .MuiChip-label': { px: 1.5 },
+                            '& .MuiChip-label': { px: 1.5},
                             '& .MuiChip-deleteIcon': { fontSize: '16px' },
                           }}
                         />
@@ -557,7 +539,7 @@ export default function TeacherLibrary() {
                       helperText={errors.year || '4-digit year, not in the future'}
                       fullWidth
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     />
                     <TextField
                       label="ISBN (Optional)"
@@ -565,7 +547,7 @@ export default function TeacherLibrary() {
                       onChange={(e) => setForm((s) => ({ ...s, isbn: e.target.value }))}
                       fullWidth
                       variant="outlined"
-                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                      sx={{ borderRadius: 1 }}
                     />
                   </Stack>
 
@@ -671,6 +653,7 @@ export default function TeacherLibrary() {
             loadError={loadError}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            role="teacher"
           />
         )}
       </motion.div>

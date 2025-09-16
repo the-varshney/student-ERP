@@ -1,36 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  Avatar,
-  Grid,
-  Alert,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Divider,
-  Snackbar,
-  Checkbox,
-  LinearProgress,
-  Stack
+import { Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem, Button, Table, TableBody, TableCell, 
+  TableContainer, TableHead, TableRow, Paper, Chip, Avatar, Grid, Alert, CircularProgress, Dialog, DialogTitle, DialogContent, 
+  DialogActions, TextField, Divider, Snackbar, Checkbox, LinearProgress, Stack, useTheme,alpha
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker';
@@ -43,86 +14,65 @@ import {
   CheckCircle as PresentIcon,
   Cancel as AbsentIcon,
   Refresh as RefreshIcon,
-  School as SchoolIcon,
   Analytics as AnalyticsIcon,
   Sort as SortIcon
 } from '@mui/icons-material';
-import { auth, db } from '../../firebase/Firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase/Firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { useAuth } from "../../context/AuthContext";
+import { HeaderBackButton } from "../../components/header";
+import SecondaryHeader from "../../components/secondaryHeader";
+import TeacherHeader from '../../components/TeacherHeader';
 
 const TeacherAttendance = () => {
-  const [teacherData, setTeacherData] = useState(null);
+  const theme = useTheme();
+  const { userDetails: teacherData, role, loading: authLoading } = useAuth();
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  
-  // Form states
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [startTime, setStartTime] = useState(dayjs());
-  const [endTime, setEndTime] = useState(dayjs().add(1, 'hour'));
-  
+  const [endTime, setEndTime] = useState(dayjs().add(1, "hour"));
   // Students and attendance
   const [, setFirebaseStudents] = useState([]);
   const [finalStudents, setFinalStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [attendancePercentages, setAttendancePercentages] = useState({});
   
-  // Loading states
   const [loading, setLoading] = useState(false);
   const [filteringStep, setFilteringStep] = useState('');
   const [studentsLoaded, setStudentsLoaded] = useState(false);
   const [showPercentage, setShowPercentage] = useState(false);
   const [loadingPercentages, setLoadingPercentages] = useState(false);
   
-  // Sorting and UI states
   const [sortBy, setSortBy] = useState('default');
   const [submitDialog, setSubmitDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  useEffect(() => {
-    fetchTeacherData();
-  }, []);
+    useEffect(() => {
+      if (teacherData && role === "Teacher") {
+        const uniquePrograms = [...new Set([teacherData.program])];
+        setPrograms(uniquePrograms);
+  
+        const uniqueSemesters = [...new Set(teacherData.subjects?.map(s => s.semester) || [])];
+        setSemesters(uniqueSemesters.sort((a, b) => a - b));
+  
+        setSubjects(teacherData.subjects || []);
+      }
+    }, [teacherData, role]);
 
-  // Update end time when start time changes
   useEffect(() => {
     if (startTime) {
       setEndTime(startTime.add(1, 'hour'));
     }
   }, [startTime]);
-
-  const fetchTeacherData = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      const teacherDoc = await getDoc(doc(db, 'Teachers', user.uid));
-      if (teacherDoc.exists()) {
-        const data = teacherDoc.data();
-        setTeacherData(data);
-        
-        // Extract unique programs
-        const uniquePrograms = [...new Set([data.program])];
-        setPrograms(uniquePrograms);
-        
-        // Extract unique semesters from subjects
-        const uniqueSemesters = [...new Set(data.subjects?.map(s => s.semester) || [])];
-        setSemesters(uniqueSemesters.sort((a, b) => a - b));
-        
-        // Set subjects for the teacher
-        setSubjects(data.subjects || []);
-      }
-    } catch (error) {
-      console.error('Error fetching teacher data:', error);
-      showSnackbar('Error fetching teacher data', 'error');
-    }
-  };
 
   const getFilteredSubjects = () => {
     if (!selectedSemester) return [];
@@ -139,7 +89,7 @@ const TeacherAttendance = () => {
     setFilteringStep('Filtering students from Firebase...');
 
     try {
-      // Filter students from Firebase (by College + Program)
+      // Filter students from Firebase 
       const studentsQuery = query(
         collection(db, 'Students'),
         where('collegeId', '==', teacherData.college),
@@ -156,8 +106,6 @@ const TeacherAttendance = () => {
         collegeName: doc.data().collegeName || '',
         collegeId: doc.data().collegeId
       }));
-
-      console.log(`Step 1: Found ${firebaseStudentsList.length} students from Firebase`);
       setFirebaseStudents(firebaseStudentsList);
 
       if (firebaseStudentsList.length === 0) {
@@ -166,7 +114,7 @@ const TeacherAttendance = () => {
         return;
       }
 
-      // Filter with MongoDB (Program + Semester)
+      // Filter with MongoDB
       setFilteringStep('Cross-referencing with MongoDB...');
 
       const response = await axios.post(`${API_BASE_URL}/api/attendance/get-students`, {
@@ -179,7 +127,7 @@ const TeacherAttendance = () => {
       setFinalStudents(response.data.students);
       setStudentsLoaded(true);
       
-      // Initialize attendance state (all present by default)
+      // Initialize attendance state
       const initialAttendance = {};
       response.data.students.forEach(student => {
         initialAttendance[student._id] = 'Present';
@@ -219,7 +167,7 @@ const TeacherAttendance = () => {
               collegeId: teacherData.college,
               program: selectedProgram,
               semester: selectedSemester,
-              subject: selectedSubject, // Use only the selected subject
+              subject: selectedSubject, 
               page: 1,
               limit: 1000
             }
@@ -402,45 +350,34 @@ const TeacherAttendance = () => {
     return '';
   };
 
-  if (!teacherData) {
+  if (authLoading || !teacherData) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading teacher data...</Typography>
+        <Typography sx={{ ml: 2 }}>Authenticating teacher...</Typography>
       </Box>
     );
   }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ p: 3, maxWidth: 1400, minHeight:'100vh', mx: 'auto' }}>
-        <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-          Take Attendance
-        </Typography>
+      <Box sx={{ p: 3, maxWidth: 1400, minHeight:'100vh', mx: 'auto',  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})` }}>
 
+<SecondaryHeader
+                title="Take Attendance"
+                titleSx={{ color: theme.palette.primary.main }}
+                leftArea={
+                  <HeaderBackButton />
+                }
+               
+              />
         {/* Teacher Info Card */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item>
-                <Avatar sx={{ width: 60, height: 60, bgcolor: 'primary.main' }}>
-                  <SchoolIcon />
-                </Avatar>
-              </Grid>
-              <Grid item xs>
-                <Typography variant="h6">
-                  {teacherData.firstName} {teacherData.lastName}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Teacher ID: {teacherData.teacherId} | Department Name: {teacherData.department}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  College Id: {teacherData.college} | Program Code: {teacherData.program}
-                </Typography>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
+        <TeacherHeader sx={{background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 1)}, ${alpha(theme.palette.secondary.main, 0.4)})`,}}
+                 extraTexts={[
+                   { text: `Teacher ID: ${teacherData?.teacherId || '—'}` },
+                   { text: `College: ${teacherData?.college || '—'}` }
+                 ]}
+       />
 
         {/* Selection Form */}
         <Card sx={{ mb: 3 }}>

@@ -1,50 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  TextField,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  Stack,
-  LinearProgress,
-  Avatar,
-  Tabs,
-  Tab,
-  Divider,
-  IconButton,
-  Tooltip,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  Grid,
-  TableRow,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Fade,
-  Zoom,
-  useTheme,
-  alpha,
-  CardActions,
-  FormGroup,
-  FormControlLabel,
-  Switch,
-  OutlinedInput,
-  Checkbox,
-  useMediaQuery,
+import { Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem, Button, TextField, CircularProgress, Snackbar,
+   Alert, Stack, LinearProgress, Tabs, Tab, Divider, IconButton, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, 
+   Grid, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Fade, Zoom, useTheme, alpha, CardActions, FormGroup, 
+   FormControlLabel, Switch, OutlinedInput, Checkbox, useMediaQuery,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -76,7 +34,6 @@ import {
   where,
   addDoc,
   doc,
-  getDoc,
   getDocs,
   updateDoc,
   serverTimestamp,
@@ -87,6 +44,10 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import axios from 'axios';
+import TeacherHeader from '../../components/TeacherHeader';
+import { HeaderBackButton } from "../../components/header";
+import SecondaryHeader from "../../components/secondaryHeader";
+import { useAuth } from "../../context/AuthContext";
 
 dayjs.extend(utc);
 
@@ -112,12 +73,6 @@ const TeacherAssignmentManager = () => {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Teacher Data
-  const [teacherData, setTeacherData] = useState(null);
-  const [programs, setPrograms] = useState([]);
-  const [semesters, setSemesters] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-
   // Assignment Creation/Edit Form
   const [formData, setFormData] = useState({
     title: '',
@@ -139,6 +94,12 @@ const TeacherAssignmentManager = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const { userDetails: teacherData, role, loading: authLoading } = useAuth();
+
+  const [programs, setPrograms] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+
   // Submissions Management
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
@@ -154,36 +115,20 @@ const TeacherAssignmentManager = () => {
   const [editDialog, setEditDialog] = useState({ open: false, assignment: null });
   const [submissionDialog, setSubmissionDialog] = useState({ open: false, submission: null });
 
-  // Initialize teacher data
-  useEffect(() => {
-    const initializeTeacherData = async () => {
-      try {
-        setLoading(true);
-        const user = auth.currentUser;
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-        const teacherDoc = await getDoc(doc(db, 'Teachers', user.uid));
-        if (teacherDoc.exists() && teacherDoc.data().role === 'Teacher') {
-          const data = teacherDoc.data();
-          setTeacherData(data);
-          setPrograms([data.program]);
-          const uniqueSemesters = [...new Set(data.subjects?.map(s => s.semester) || [])];
-          setSemesters(uniqueSemesters.sort((a, b) => a - b));
-          setSubjects(data.subjects || []);
-        } else {
-          navigate('/home');
-        }
-      } catch (error) {
-        console.error('Error fetching teacher data:', error);
-        showSnackbar('Error fetching teacher data', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    initializeTeacherData();
-  }, [navigate]);
+    useEffect(() => {
+  if (authLoading) return;
+  if (!teacherData || role !== "Teacher") {
+  navigate("/home");
+  return;
+  }
+  const uniquePrograms = [...new Set([teacherData.program])];
+  setPrograms(uniquePrograms);
+
+  const uniqueSemesters = [...new Set(teacherData.subjects?.map(s => s.semester) || [])];
+  setSemesters(uniqueSemesters.sort((a, b) => a - b));
+
+  setSubjects(teacherData.subjects || []);
+  }, [teacherData, role, authLoading, navigate]);
 
   useEffect(() => {
     if (activeTab === 1 && auth.currentUser) loadAssignments();
@@ -628,7 +573,7 @@ const TeacherAssignmentManager = () => {
     return { total, graded, pending, avgMarks: Math.round(avgMarks * 100) / 100 };
   }, [submissions]);
 
-  if (!teacherData) {
+  if (authLoading || !teacherData) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})` }}>
         <Card sx={{ p: 4, textAlign: 'center' }}>
@@ -906,27 +851,19 @@ const TeacherAssignmentManager = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ minHeight: '100vh', background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`, p: 3 }}>
+        <SecondaryHeader
+        title="Assignment Manager"
+        leftArea={
+                <HeaderBackButton />}
+        />
         <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
           {/* Header */}
           <Fade in timeout={800}>
-            <Card sx={{ mb: 3, background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`, color: 'white' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <Avatar sx={{ width: 64, height: 64, bgcolor: 'white', color: theme.palette.primary.main }}>
-                    <AssignmentIcon fontSize="large" />
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h4" fontWeight="bold">Assignment Manager</Typography>
-                    <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-                      {teacherData.firstName} {teacherData.lastName} • {teacherData.department}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      {teacherData.college} • {teacherData.program}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
+            <Box>
+            <TeacherHeader sx={{background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 1)}, ${alpha(theme.palette.secondary.main, 0.4)})`,}}
+               avatarSx={{ bgcolor: 'white', color: theme.palette.primary.main }} 
+              />
+            </Box>
           </Fade>
 
           {/* Tabs */}
