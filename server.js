@@ -10,7 +10,7 @@ const app = express();
 // CORS config with fallback for development
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(",").map(s => s.trim())
-  : ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://192.168.56.1:5173/"];
+  : ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://192.168.56.1:5173/", "http://192.168.1.14:5173"];
 
 app.use(cors({
   origin: (origin, cb) => {
@@ -54,6 +54,10 @@ app.use("/api/results", resultsRoutes);
 app.use("/api/exam-schedules", examScheduleRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/payment', paymentRoutes);
+
+app.get("/status", (req, res) => {
+  res.json({ alive: true, time: Date.now() });
+});
 
 // Error handling middleware
 app.use((error, req, res, next) => {
