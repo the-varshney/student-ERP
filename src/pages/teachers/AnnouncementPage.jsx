@@ -31,7 +31,7 @@ const tsToMs = (t) => {
   return 0;
 };
 
-//cache (1 hour)
+//cache (stored for 1 hour)
 const CACHE_TTL = 1000 * 60 * 60;
 const setCache = (key, data) =>
   localStorage.setItem(key, JSON.stringify({ data, expiry: Date.now() + CACHE_TTL }));
@@ -232,33 +232,65 @@ export default function CreateAnnouncement() {
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, minHeight:"100vh" }}>
       {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <HeaderBackButton/>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between"
+      alignItems={{ xs: "stretch", md: "center" }} spacing={{ xs: 2, md: 0 }} mb={2}
+      >
+      {/* Left side: Back button, Title, College Chip */}
+      <Stack direction="row" spacing={2} alignItems="center"
+        sx={{
+          width: { xs: "100%", md: "auto" },
+          justifyContent: { xs: "space-between", md: "flex-start" },
+        }}
+      >
+        <HeaderBackButton />
+
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography variant="h4"
+            sx={{
+              fontWeight: 700, whiteSpace: "nowrap",
+              overflow: "hidden", textOverflow: "ellipsis",
+            }}
+          >
             Announcements
           </Typography>
-          <Chip size="small" color="primary" variant="outlined" label={`College: ${effectiveCollegeId || '—'}`} />
-        </Stack>
+        </Box>
 
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button
-            variant={myCollegeOnly ? 'contained' : 'outlined'}
-            color="primary"
-            onClick={() => setMyCollegeOnly((v) => !v)}
-          >
-            {myCollegeOnly ? 'My College Only' : 'Show All Colleges'}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreate}
-            disabled={cannotCreate}
-          >
-            New Announcement
-          </Button>
-        </Stack>
-      </Stack>
+        <Chip size="small" color="primary" variant="outlined"
+          label={`College: ${effectiveCollegeId || '—'}`}
+          sx={{
+            flexShrink: 0, fontSize: { xs: "0.75rem", sm: "0.875rem" }, px: { xs: 1, sm: 1.5 },
+          }}
+        />
+    </Stack>
+
+  {/* Right side: Toggle amd New Announcement buttons */}
+  <Stack direction={{ xs: "column", sm: "row" }}
+    spacing={1} alignItems={{ xs: "stretch", sm: "center" }}
+    sx={{
+      width: { xs: "100%", md: "auto" },
+    }}
+  >
+    <Button fullWidth={{ xs: true, sm: false }} variant={myCollegeOnly ? "contained" : "outlined"}
+      color="primary" onClick={() => setMyCollegeOnly((v) => !v)}
+      sx={{
+        fontSize: { xs: "1rem", sm: "0.875rem" },
+        py: { xs: 1.5, sm: 1 }, px: { xs: 2, sm: 2 },
+      }}
+    >
+      {myCollegeOnly ? "My College Only" : "Show All Colleges"}
+    </Button>
+
+      <Button fullWidth={{ xs: true, sm: false }}
+        variant="contained" startIcon={<AddIcon />}
+        onClick={openCreate} disabled={cannotCreate}
+        sx={{
+          fontSize: { xs: "1rem", sm: "0.875rem" },
+          py: { xs: 1.5, sm: 1 },
+          }}
+        >New Announcement
+      </Button>
+    </Stack>
+  </Stack>
 
       {cannotCreate && (
         <Alert severity="warning" sx={{ mb: 2 }}>

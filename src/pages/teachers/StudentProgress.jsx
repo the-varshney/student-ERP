@@ -595,7 +595,7 @@ const TeacherStudentTracker = () => {
                     setAssignmentMarksMap({});
                     setResultsTotals({});
                   }}
-                  sx={{ minHeight: 40 }}
+                  sx={{ minHeight: 40, minWidth: 110 }}
                 >
                   {(semesters || [])
                     .slice()
@@ -616,7 +616,7 @@ const TeacherStudentTracker = () => {
                   value={selectedSubjectId}
                   label="Subject (optional)"
                   onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  sx={{ minHeight: 40 }}
+                  sx={{ minHeight: 40, minWidth: 100 }}
                 >
                   <MenuItem value="">All Subjects</MenuItem>
                   {subjects.map((s) => (

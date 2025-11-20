@@ -186,7 +186,7 @@ export default function StudentAchievements() {
                           </Avatar>
                         </Grid>
                         <Grid item xs={12} sm>
-                          <Typography variant="h6" fontWeight={700} component="div">{a.eventName || "Achievement"}</Typography>
+                          <Typography variant="h6" fontWeight={700} color= "blue" component="div">{a.eventName || "Achievement"}</Typography>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Organized by: <strong>{a.organizer || "-"}</strong></Typography>
                           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                               {a.position && <Chip label={a.position} color={isFirstPlace ? "warning" : "primary"} size="small" variant="filled" icon={<PremiumIcon />} />}

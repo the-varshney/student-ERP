@@ -1,6 +1,7 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
+import { CircularProgress, Box, Typography } from "@mui/material";
 import ProtectedRoute from './context/ProtectedRoute';
 import AuthContext from './context/AuthContext';
 import './App.css';
@@ -26,7 +27,7 @@ import AdminCatalogManager from './pages/admins/Colleges&CoursesManager';
 import UniLibrary from './pages/admins/UniLibrary';
 
 import TeacherHome from './pages/teachers/home';
-import AttendanceTaking from './pages/teachers/attedanceTaking';
+import AttendanceTaking from './pages/teachers/attendanceTaking';
 import ResultUpdate from './pages/teachers/resultUpdate';
 import TeacherLibrary from './pages/teachers/teacherLibrary';
 import ManageAssignments from './pages/teachers/manageAssignments';
@@ -69,9 +70,61 @@ import Achievements from './pages/students/Achievements';
 import Assistance from './pages/students/Assistance';
 import Fees from './pages/students/Fees';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+// Ping backend /status or fail → backend is sleeping
+async function pingBackend() {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch(`${API_URL}/status`, { signal: controller.signal });
+
+    clearTimeout(timeout);
+    return res.ok; // Backend is awake
+  } catch {
+    return false; // Still sleeping
+  }
+}
 
 export default function App() {
   const { role, loading } = useContext(AuthContext);
+  const [waking, setWaking] = useState(true);
+  useEffect(() => {
+    let interval;
+
+    async function pollBackend() {
+      const awake = await pingBackend();
+      if (awake) {
+        setWaking(false);
+        clearInterval(interval);
+      }
+    }
+
+    // First loading check
+    pollBackend();
+     // Re-check every 5 seconds until backend wakes
+     interval = setInterval(pollBackend, 5000);
+
+     return () => clearInterval(interval);
+   }, []);
+ 
+   // Loading UI for cold start
+   if (waking) {
+     return (
+       <Box
+         display="flex"
+         justifyContent="center"
+         alignItems="center"
+         minHeight="100vh"
+         sx={{ flexDirection: "column" }}
+       >
+         <CircularProgress size={60} />
+         <Typography sx={{ mt: 2 }} variant="h6" color="text.secondary">
+           Warming up the server…
+         </Typography>
+       </Box>
+     );
+   }
   return (
     <>
       <CssBaseline />
@@ -161,7 +214,12 @@ export default function App() {
 
         {/* Default Redirect */}
         <Route path="*" element={
-            loading ? <div>Loading...</div> :
+            loading ? <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+            <CircularProgress size={60} />
+            <Typography sx={{ ml: 2 }} variant="h6" color="text.secondary">
+              Getting things ready…
+            </Typography>
+          </Box> :
             <Navigate
               to={
                 role === 'Admin' ? '/admin' :

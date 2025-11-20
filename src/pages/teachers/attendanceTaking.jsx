@@ -86,7 +86,7 @@ const TeacherAttendance = () => {
     }
 
     setLoading(true);
-    setFilteringStep('Filtering students from Firebase...');
+    setFilteringStep('Filtering students from DataBase...');
 
     try {
       // Filter students from Firebase 
@@ -115,7 +115,7 @@ const TeacherAttendance = () => {
       }
 
       // Filter with MongoDB
-      setFilteringStep('Cross-referencing with MongoDB...');
+      setFilteringStep('Cross-referencing students records...');
 
       const response = await axios.post(`${API_BASE_URL}/api/attendance/get-students`, {
         teacherCollege: teacherData.college,

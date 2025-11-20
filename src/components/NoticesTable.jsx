@@ -33,7 +33,7 @@ import { collection, onSnapshot, query, where, limit } from 'firebase/firestore'
 import { db } from '../firebase/Firebase';
 import { HeaderBackButton } from './header';
 import SecondaryHeader from './secondaryHeader';
-import PDFViewer from './pdfViewer';
+import PDFViewer from './PdfViewer';
 
 const ALL_COLLEGES_KEY = 'C000';
 
@@ -385,7 +385,7 @@ function NoticesTable({
         open={!!selected}
         onClose={() => setSelected(null)}
         fullWidth
-        maxWidth="md"
+        maxWidth="xl"
         aria-labelledby="announcement-detail-title"
       >
         <DialogTitle id="announcement-detail-title" sx={{ pr: 6 }}>
@@ -490,8 +490,9 @@ function NoticesTable({
                       <PDFViewer
                         fileUrl={pdfUrl}
                         downloadable={false} 
+                        showFullscreenButton
                         showHeader={false}
-                        height={{ xs: 360, md: 500 }}
+                        height={{ xs: 460, md: 650 }}
                         containerSx={{
                           mt: 1,
                           border: '1px solid',
@@ -500,7 +501,7 @@ function NoticesTable({
                           bgcolor: 'background.paper',
                         }}
                         pageMaxWidth={1000}
-                        pageWidthPct={0.95}
+                        pageWidthPct={0.75}
                       />
                     </Stack>
                   );

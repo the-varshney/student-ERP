@@ -1,4 +1,3 @@
-// src/pages/teacher/Schedule.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Card, CardContent, Typography, Stack, Chip, CircularProgress,
@@ -61,12 +60,12 @@ const renderCellText = (r) => {
 
 const Schedule = () => {
   const theme = useTheme();
-
   const { currentUser, role, userDetails, loading: authLoading } = useAuth();
 
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,7 +80,6 @@ const Schedule = () => {
           return;
         }
 
-        // teacher profile is already available in userDetails from cache
         const collegeId = userDetails?.college;
         if (!collegeId) {
           setError("College not set in profile.");
@@ -113,32 +111,74 @@ const Schedule = () => {
 
   const pivot = useMemo(() => sharedPivot(rows, []), [rows]);
 
+  //status and file name as chip-like labels in tabs
+  const headerTabs = [
+    schedule?.status
+      ? { value: "status", label: <Chip color="success" variant="outlined" label={`Status: ${schedule.status}`} /> }
+      : null,
+    schedule?.storage?.fileName
+      ? { value: "file", label: <Chip label={schedule.storage.fileName} /> }
+      : null,
+  ].filter(Boolean);
+
+  const handleTabChange = (_e, v) => setTabValue(v);
+
+  // Second-row right area (Download button)
+  const belowRightArea = schedule?.storage?.url ? (
+    <Button
+      size="small"
+      variant="outlined"
+      startIcon={<DownloadIcon />}
+      component="a"
+      href={schedule.storage.url}
+      download={schedule.storage.fileName || "schedule"}
+    >
+      Download
+    </Button>
+  ) : null;
+
   return (
-    <Box sx={{ p: 3, maxWidth: "1200px", minHeight: "100vh", background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})` }}>
+    <Box
+      sx={{
+        p: 3,
+        minWidth: "95vw",
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`
+      }}
+    >
       <SecondaryHeader
         title="My Schedule"
         titleSx={{ color: theme.palette.primary.main }}
         leftArea={<HeaderBackButton />}
-        rightArea={[
-          schedule?.status && (
-            <Chip key="status" color="success" variant="outlined" label={`Status: ${schedule.status}`} />
-          ),
-          schedule?.storage?.fileName && <Chip key="file" label={schedule.storage.fileName} />,
-          schedule?.storage?.url && (
-            <Button
-              key="download"
-              size="small"
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              component="a"
-              href={schedule.storage.url}
-              download={schedule.storage.fileName || "schedule"}
-              sx={{ ml: 1 }}
-            >
-              Download
-            </Button>
-          ),
-        ]}
+        tabs={headerTabs}
+        tabValue={tabValue}
+        onTabChange={handleTabChange}
+        renderBelow
+        rightOn="bottom"
+        rightArea={belowRightArea}
+        tabsProps={{
+          TabIndicatorProps: { style: { display: "none" } },
+          sx: {
+            minHeight: 40,
+            "& .MuiTabs-flexContainer": { gap: 2 },
+            borderBottom: "none",
+          },
+        }}
+        tabProps={{
+          disableRipple: true,
+          disableFocusRipple: true,
+          sx: {
+            minHeight: 36,
+            maxWidth: "99%",
+            textTransform: "none",
+            padding: 0,
+            cursor: "default",
+            "&:hover": {
+              backgroundColor: "transparent",
+            },
+            "& .MuiTouchRipple-root": { display: "none" },
+          },
+        }}
       />
 
       {loading ? (
@@ -163,7 +203,6 @@ const Schedule = () => {
                 ? [
                     <Chip
                       key="academic-chip"
-                      color="secondary"
                       variant="outlined"
                       label={`Academic: ${schedule.academicRange}`}
                     />,

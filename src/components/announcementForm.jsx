@@ -1,34 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Paper,
-  Stack,
-  TextField,
-  Button,
-  Typography,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Switch,
-  FormLabel,
-  Divider,
-  LinearProgress,
-  Chip,
-  Alert,
+import { Box, Paper, Stack, TextField, Button, Typography, RadioGroup, FormControlLabel, Radio, 
+  Switch, FormLabel, Divider, LinearProgress, Chip, Alert,
 } from '@mui/material';
 import { db, storage } from '../firebase/Firebase';
-import {
-  collection,
-  doc,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
+import { collection, doc, serverTimestamp, setDoc, updateDoc,
 } from 'firebase/firestore';
-import {
-  getDownloadURL,
-  ref,
-  uploadBytesResumable,
+import { getDownloadURL, ref, uploadBytesResumable,
 } from 'firebase/storage';
 
 const defaultState = {

@@ -6,7 +6,6 @@ import LibraryBrowser from "../students/library";
 import EResourcesViewer from "../students/Eresources";
 import ENotesViewer from "../students/notes";
 import SecondaryHeader from "../../components/secondaryHeader";
-import { HeaderBackButton } from "../../components/header";
 import { ThemeContext } from "../../context/ThemeContext";
 
 function TabPanel({ children, value, index, ...other }) {
@@ -18,7 +17,7 @@ function TabPanel({ children, value, index, ...other }) {
       aria-labelledby={`admin-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+      {value === index && <Box sx={{ pt: 1, minWidth: "90vw" }}>{children}</Box>}
     </div>
   );
 }
@@ -51,10 +50,9 @@ export default function UniLibrary() {
         transition: "background 0.5s ease-in-out",
       }}
     >
-      <Container sx={{ pt: 2 }}>
-        <SecondaryHeader
+      <Container sx={{ pt: 2, minWidth: "100vw"}}>
+      <SecondaryHeader titleSx={{fontWeight: "bolder"}}
           title="University Library"
-          leftArea={<HeaderBackButton size="small" />}
           rightArea={
             <Tabs
               value={value}
@@ -63,6 +61,7 @@ export default function UniLibrary() {
               scrollButtons="auto"
               aria-label="Admin content tabs"
               sx={{
+                maxWidth: {xs: "70%", md: "100%"},
                 "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
                 "& .MuiTabs-indicator": { height: 3 },
               }}
@@ -75,7 +74,7 @@ export default function UniLibrary() {
           elevation={0}
           border
           paperSx={{
-            borderRadius: 3,
+            borderRadius: 2,
             position: "relative",
             maxWidth: { md: "86vw", xs: "100vw" },
             left: { xs: 0, md: "5%" },
@@ -89,10 +88,10 @@ export default function UniLibrary() {
       </Container>
 
       {/* Content */}
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="100vw" sx={{ py: 4 }}>
         <Stack spacing={3}>
           <TabPanel value={value} index={0}>
-            <LibraryBrowser containerProps={{ sx: { py: 0 } }} />
+          <LibraryBrowser containerProps={{ sx: { py: 0, minWidth:{xs:"90vw", md: "85vw"} } }} />
           </TabPanel>
 
           <TabPanel value={value} index={1}>

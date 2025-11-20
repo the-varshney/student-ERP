@@ -262,7 +262,7 @@ function Login() {
           top: { xs: '3%', sm: '3%', md: "0" },
           left: "50%",
           transform: "translateX(-50%)",
-          zIndex: 20,
+          zIndex: 10,
         }}
       >
         <UTSLogo clickable={false} width={170}/>

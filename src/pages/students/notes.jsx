@@ -560,8 +560,8 @@ export default function ENotesViewer({ role = "student", containerProps = {} }) 
             sx={{
               "& .MuiDialog-paper": {
                 margin: isMobile ? 0 : "32px",
-                width: isMobile ? "100vw" : "90vw",
-                height: isMobile ? "100vh" : "90vh",
+                minWidth: isMobile ? "100vw" : "90vw",
+                minHeight: isMobile ? "100vh" : "90vh",
                 maxHeight: "90vh",
                 maxWidth: "90vw",
                 borderRadius: isMobile ? 0 : 3,
@@ -582,6 +582,7 @@ export default function ENotesViewer({ role = "student", containerProps = {} }) 
                 fileUrl={openPdf}
                 downloadable
                 downloadFileName="Note.pdf"
+                showFullscreenButton
                 showHeader={false}
                 height="82vh"
                 pageMaxWidth={1000}

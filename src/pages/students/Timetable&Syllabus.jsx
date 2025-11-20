@@ -453,7 +453,7 @@ export default function StudentClass() {
               ) : syllabusErr ? (
                 <Alert severity="error">{syllabusErr}</Alert>
               ) : syllabusDoc?.storage?.url ? (
-                <PdfViewer fileUrl={syllabusDoc.storage.url} />
+                <PdfViewer fileUrl={syllabusDoc.storage.url} downloadable showFullscreenButton/>
               ) : (
                 <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3, border: "1px solid", borderColor: theme.palette.divider }}>
                   <Typography variant="h6" gutterBottom>Syllabus Not Available</Typography>

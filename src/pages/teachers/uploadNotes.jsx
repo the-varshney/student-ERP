@@ -512,7 +512,7 @@ export default function UploadNotes() {
                             variant="outlined"
                             sx={{
                                 borderRadius: 3,
-                                width: { md: 300, xs: "60vw" },
+                                width: { md: 300, xs: 280 },
                                 height: 240,
                                 display: "flex",
                                 flexDirection: "column",

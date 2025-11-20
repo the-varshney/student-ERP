@@ -1,27 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  IconButton,
-  CircularProgress,
-  Alert,
-  Input,
-  Button,
-  Stack,
-  Dialog,
-  DialogContent,
-  DialogTitle,
+import { Box, Paper, Typography, TextField, IconButton, CircularProgress, Alert, Input, Button, Stack, Dialog, DialogContent, DialogTitle,
 } from "@mui/material";
-import {
-  Send as SendIcon,
-  AttachFile as AttachFileIcon,
-  PictureAsPdf as PictureAsPdfIcon,
-  InsertDriveFile as FileIcon,
-  OpenInNew as OpenInNewIcon,
-  Close as CloseIcon,
+import { Send as SendIcon, AttachFile as AttachFileIcon, PictureAsPdf as PictureAsPdfIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon, Close as CloseIcon,
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import PdfViewer from "./PdfViewer";
@@ -48,17 +29,7 @@ const PdfTile = ({ fileName, onOpen }) => {
     <Paper
       variant="outlined"
       onClick={onOpen}
-      sx={{
-        mt: 1,
-        p: 1.25,
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        maxWidth: 420,
-        borderRadius: 2,
-        cursor: "pointer",
-        bgcolor: "background.paper",
-        borderColor: "divider",
+      sx={{ mt: 1, p: 1.25, display: "flex", alignItems: "center", gap: 1, maxWidth: 420, borderRadius: 2, cursor: "pointer", bgcolor: "background.paper", borderColor: "divider",
       }}
     >
       <PictureAsPdfIcon color="error" />
@@ -78,14 +49,7 @@ const PdfTile = ({ fileName, onOpen }) => {
 const ImagePreview = ({ fileUrl, fileName, onOpen }) => (
   <Box
     sx={{
-      mt: 1,
-      borderRadius: 2,
-      overflow: "hidden",
-      width: "100%",
-      maxWidth: 360,
-      cursor: "pointer",
-      border: "1px solid",
-      borderColor: "divider",
+      mt: 1, borderRadius: 2, overflow: "hidden", width: "100%", maxWidth: 360, cursor: "pointer", border: "1px solid", borderColor: "divider",
     }}
     onClick={onOpen}
   >
@@ -93,12 +57,7 @@ const ImagePreview = ({ fileUrl, fileName, onOpen }) => (
       component="img"
       src={fileUrl}
       alt={fileName || "image"}
-      sx={{
-        display: "block",
-        width: "100%",
-        height: "auto",
-        maxHeight: 260,
-        objectFit: "cover",
+      sx={{ display: "block", width: "100%", height: "auto", maxHeight: 260, objectFit: "cover",
       }}
       loading="lazy"
     />
@@ -205,27 +164,13 @@ const MessageBox = ({
   return (
     <Box
       sx={{
-        flexGrow: 1,
-        display: "flex",
-        flexDirection: "column",
-        height: containerHeight,
-        minHeight: 0,
-        width: "100%",
-        maxWidth: containerMinWidth,
-        minWidth: containerMaxWidth,
+        flexGrow: 1, display: "flex", flexDirection: "column", height: containerHeight, minHeight: 0, width: "100%", maxWidth: containerMinWidth, minWidth: containerMaxWidth,
       }}
     >
       {/* Messages */}
       <Box
         sx={{
-          flexGrow: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          p: contentPadding,
-          display: "flex",
-          flexDirection: "column",
-          gap: 1.5,
-          width: messagesContainerWidth,
+          flexGrow: 1, minHeight: 0, overflowY: "auto", p: contentPadding, display: "flex", flexDirection: "column", gap: 1.5, width: messagesContainerWidth,
         }}
       >
         {loading ? (

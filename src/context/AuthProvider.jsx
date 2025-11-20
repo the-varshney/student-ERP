@@ -165,7 +165,7 @@ export default function AuthProvider({ children }) {
       const uid = user.uid;
       cache.setLastUid(uid);
 
-      //Hydrate from merged cache first
+      //new updated from merged cache first
       const cachedMergedStudent = cache.get(uid, "student");
       const cachedRole = cache.get(uid, "role");
       const cachedDetailsFallback = cache.get(uid, "details");

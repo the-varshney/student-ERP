@@ -1,33 +1,10 @@
 import React, { useContext, useMemo } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import AuthContext from '../../context/AuthContext';
-import {
-  Typography,
-  Container,
-  Grid,
-  Card,
-  CardActionArea,
-  Box,
-  IconButton,
-  useTheme,
-} from '@mui/material';
-import {
-  CalendarToday,
-  School,
-  Feedback,
-  EventNote,
-  CurrencyRupee,
-  Chat,
-  MenuBook,
-  HolidayVillage,
-  Event,
-  Notifications,
-  Timelapse,
-  Book,
-  NoteAlt,
-  Assignment,
-  EmojiEvents,
-} from '@mui/icons-material';
+import { Typography, Container, Grid, Card, CardActionArea, Box, IconButton, useTheme,
+        } from '@mui/material';
+import {CalendarToday, School, Feedback, EventNote, CurrencyRupee, Chat, MenuBook, HolidayVillage, 
+  Event, Notifications, Timelapse, Book, NoteAlt, Assignment, EmojiEvents } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { themes } from '../../components/theme';

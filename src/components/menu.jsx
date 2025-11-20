@@ -87,7 +87,9 @@ const Menu = ({ role, open, onClose }) => {
   const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const hoverBg = alpha(theme.palette.primary.main, 0.08);
   const hoverGlow = `0 0 10px ${alpha(theme.palette.primary.main, 0.35)}`;
-  const iconColor = theme.palette.primary.main;
+  const iconColor = isDark 
+  ? theme.palette.primary.main
+  : theme.palette.background.default;
   const textColor = theme.palette.text.primary;
 
   return (

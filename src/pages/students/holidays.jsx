@@ -5,6 +5,7 @@ import {
   Button, IconButton, Alert, CircularProgress, Tabs, Tab, Table, TableHead, TableBody,
   TableRow, TableCell, TableContainer, Paper, Chip
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import {
@@ -168,6 +169,7 @@ const Holidays = () => {
   };
 
   const dataForTab = tab === 'all' ? rows : upcoming;
+  const theme = useTheme();
 
   const renderTable = (data) => (
     <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
@@ -243,58 +245,94 @@ const Holidays = () => {
           {tab === 'all' && (
             <Card variant="outlined" sx={{ mt: 2 }}>
               <CardContent>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" useFlexGap flexWrap="wrap">
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Year</InputLabel>
-                    <Select label="Year" value={year} onChange={(e) => setYear(e.target.value)}>
-                      {years.map((y) => (
-                        <MenuItem key={y} value={y}>{y}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+              <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={{ xs: 2, md: 2 }}
+                  alignItems={{ xs: "stretch", md: "center" }}
+                  useFlexGap flexWrap="wrap"
+                  sx={{ width: "100%", p: { xs: 2, md: 0 },
+                    bgcolor: { xs: theme.palette.background.paper, md: "transparent" },
+                    borderRadius: { xs: 2, md: 0 }, boxShadow: { xs: 1, md: "none" },
+                    border: { xs: `1px solid ${theme.palette.divider}`, md: "none" },
+                  }}
+                >
+                  {/* Year, Month, Type Grid */}
+                  <Box
+                    sx={{ display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+                      gap: 2, width: "100%", flex: 1,
+                    }}
+                  >
+                    <FormControl size="small">
+                      <InputLabel>Year</InputLabel>
+                      <Select label="Year" value={year} onChange={(e) => setYear(e.target.value)}>
+                        {years.map((y) => (
+                          <MenuItem key={y} value={y}>
+                            {y}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                  <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel>Month</InputLabel>
-                    <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
-                      <MenuItem value="">All months</MenuItem>
-                      {[...Array(12)].map((_, i) => (
-                        <MenuItem key={i + 1} value={i + 1}>
-                          {dayjs().month(i).format('MMMM')}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <FormControl size="small">
+                      <InputLabel>Month</InputLabel>
+                      <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
+                        <MenuItem value="">All months</MenuItem>
+                        {[...Array(12)].map((_, i) => (
+                          <MenuItem key={i + 1} value={i + 1}>
+                            {dayjs().month(i).format("MMMM")}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                  <FormControl size="small" sx={{ minWidth: 160 }}>
-                    <InputLabel>Type</InputLabel>
-                    <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-                      <MenuItem value="">All types</MenuItem>
-                      {TYPES.map((t) => (
-                        <MenuItem key={t} value={t}>{t}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <FormControl size="small">
+                      <InputLabel>Type</InputLabel>
+                      <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
+                        <MenuItem value="">All types</MenuItem>
+                        {TYPES.map((t) => (
+                          <MenuItem key={t} value={t}>
+                            {t}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
 
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                    <DatePicker
-                      label="From date"
-                      value={startDate}
+                  {/* Date Pickers */}
+                  <Stack direction={{ xs: "column", sm: "row" }}
+                    spacing={2} alignItems="stretch"
+                    sx={{ width: { xs: "100%", md: "auto" }, flex: { md: 1 },
+                      }}
+                  >
+                    <DatePicker label="From date" value={startDate}
                       onChange={(v) => setStartDate(v)}
-                      slotProps={{ textField: { size: 'small' } }}
-                      views={['year', 'month', 'day']}
+                      slotProps={{ textField: { size: "small", fullWidth: true } }}
+                      views={["year", "month", "day"]}
                     />
-                    <DatePicker
-                      label="To date"
-                      value={endDate}
+                    <DatePicker label="To date" value={endDate}
                       onChange={(v) => setEndDate(v)}
-                      slotProps={{ textField: { size: 'small' } }}
-                      views={['year', 'month', 'day']}
+                      slotProps={{ textField: { size: "small", fullWidth: true } }}
+                      views={["year", "month", "day"]}
                     />
                   </Stack>
 
-                  <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-                    <Button variant="outlined" onClick={resetFilters}>Reset</Button>
-                    <Button variant="contained" onClick={fetchAll} startIcon={<TodayIcon />}>
+                  <Stack
+                    direction={{ xs: "row", sm: "row" }} spacing={1}
+                    sx={{
+                      width: { xs: "100%", md: "auto" },
+                      justifyContent: { xs: "stretch", md: "flex-end" },
+                      mt: { xs: 1, md: 0 },
+                    }}
+                  >
+                    <Button variant="outlined" onClick={resetFilters}
+                      fullWidth={{ xs: true, sm: false }}
+                    >
+                      Reset
+                    </Button>
+                    <Button variant="contained" onClick={fetchAll}
+                      startIcon={<TodayIcon />} fullWidth={{ xs: true, sm: false }}
+                    >
                       Apply
                     </Button>
                   </Stack>

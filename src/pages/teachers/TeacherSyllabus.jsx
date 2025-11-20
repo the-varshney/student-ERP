@@ -365,9 +365,9 @@ export default function TeacherSyllabus() {
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 0, height: '80vh' }}>
+        <DialogContent sx={{ p: 0, height: '90vh' }}>
           {viewerUrl ? (
-            <PdfViewer fileUrl={viewerUrl} />
+            <PdfViewer fileUrl={viewerUrl} showFullscreenButton />
           ) : (
             <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
               <Alert severity="warning">No file to preview.</Alert>

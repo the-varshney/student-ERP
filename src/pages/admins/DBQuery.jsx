@@ -213,10 +213,11 @@ const Panel = React.memo(function Panel({
             </Select>
           </FormControl>
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction={{ xs: "column", sm: "row" }}spacing={1} alignItems={{ xs: "stretch", sm: "center" }}
+        sx={{ width: { xs: "100%", sm: "auto" } }}>
           <Tooltip title="Run">
             <span>
-              <Button variant="contained" startIcon={busy ? <CircularProgress size={16} /> : <RunIcon />} disabled={busy} onClick={onExecute}>
+            <Button sx={{ minWidth: { xs: "50vw", sm: "auto" } }} variant="contained" startIcon={busy ? <CircularProgress size={16} /> : <RunIcon />} disabled={busy} onClick={onExecute}>
                 Execute
               </Button>
             </span>
@@ -439,14 +440,14 @@ const Panel = React.memo(function Panel({
   if (!isAdmin) return null;
 
   return (
-    <Box sx={{ p: { xs: 1.5, md: 2.5 }, maxWidth: 1600, mx: 'auto' }}>
+    <Box sx={{ p: { xs: 1, md: 2.5 }, maxWidth: 1600, mx: 'auto' }}>
       {/* Header */}
       <SecondaryHeader
           title="Database Workbench"
           leftArea={<HeaderBackButton />}
            rightArea={
           <Stack direction="row" spacing={1}>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ maxWidth: 160}}>
           <InputLabel>Layout</InputLabel>
           <Select value={mode} label="Layout" onChange={(e) => setMode(e.target.value)}>
           <MenuItem value="single">Single Panel</MenuItem>

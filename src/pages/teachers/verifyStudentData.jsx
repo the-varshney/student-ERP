@@ -423,7 +423,7 @@ export default function StudentsVerify() {
   const enrollmentNoRef = useRef(null);
 
   return (
-    <Paper elevation={0} sx={{
+    <Paper elevation={0} sx={{ minWidth:"100vw",
       background: mode === "default" ? `linear-gradient(135deg, ${theme.palette.green.main} -50%, ${theme.palette.green.focus} 90%)` 
                : mode === "light" ? theme.palette.green.main 
                : `linear-gradient(135deg, ${theme.palette.green.main} -50%, ${theme.palette.background.paper} 90%)`, 
@@ -431,41 +431,92 @@ export default function StudentsVerify() {
     }}>
       <Card sx={{ 
         p: { xs: 2, md: 3 }, 
-        width: "100%", 
-        maxWidth: 1250, 
+        minWidth: "95vw", 
+        maxWidth: 120, 
+        minHeight:{xs:"calc(100% + 70vh)", sm: "100%"},
         borderRadius: 3, 
         boxShadow: "0 8px 24px rgba(0,0,0,0.08)" 
       }}>
-        <Stack direction={{ xs: "column", md: "row" }} 
-               spacing={2} alignItems="center" 
-               sx={{ mb: 3 }}>
-                <HeaderBackButton/>
-          <Typography variant="h5" fontWeight={750} sx={{ flex: 1, color: `${theme.palette.primary.main}` }}>
-            Verify Students Data
-          </Typography>
-          <TextField variant="outlined" size="small" 
-                     placeholder="Search name, email, phone, ABC ID, enrollment..." 
-                     value={search} 
-                     onChange={(e) => setSearch(e.target.value)} 
-                     sx={{ width: { xs: "100%", sm: 350 } }} />
-          <FormControl size="small" sx={{ width: { xs: "100%", md: 160 }, minWidth: 120 }}>
-            <InputLabel>Gender</InputLabel>
-            <Select label="Gender" value={genderFilter} onChange={(e) => setGenderFilter(e.target.value)}>
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="Male">Male</MenuItem>
-              <MenuItem value="Female">Female</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
-            </Select>
-          </FormControl>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={{ xs: 2, md: 2 }}
+          alignItems={{ xs: "stretch", md: "center" }}
+          sx={{ mb: 3 }}
+        >
+      <Stack direction="row" spacing={2} alignItems="center"
+        sx={{ width: "100%", justifyContent: "space-between",
+        }}
+      >
+        <HeaderBackButton />
 
-          <Button variant="outlined" 
-                  color="primary" 
-                  onClick={refetch} 
-                  disabled={loading || authLoading || !associateCollegeId} 
-                  sx={{ minWidth: 120 }}>
-            {loading ? <CircularProgress size={18} /> : "Refresh"}
-          </Button>
-        </Stack>
+        <Typography variant="h5"
+          fontWeight={750}
+          sx={{
+            color: theme.palette.primary.main, flex: 1,
+            textAlign: { xs: "center", md: "left" },
+            minWidth: 0, overflow: "hidden",
+            textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          Verify Students Data
+        </Typography>
+
+        <Box sx={{ width: 40, height: 40, flexShrink: 0, opacity: 0 }}>
+          <HeaderBackButton />
+        </Box>
+      </Stack>
+
+      {/* Search Bar*/}
+      <TextField variant="outlined" size="small"
+        placeholder="Search name, email, phone, ABC ID, enrollment..."  value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        sx={{
+          width: { xs: "100%", md: 450 },
+          order: { xs: 2, md: 0 },
+        }}
+      />
+
+      {/* Filter & Button Row */}
+      <Stack direction={{ xs: "row", sm: "row" }}
+        spacing={1}
+        sx={{ width: { xs: "100%", md: "auto" },
+          flexWrap: "wrap", gap: 1,
+          order: { xs: 3, md: 0 },
+        }}
+      >
+        <FormControl size="small"
+          sx={{
+            top:{md: 24},
+            minWidth: { xs: 120, md: 140 },
+            flex: { xs: 1, md: "unset" },
+          }}
+        >
+          <InputLabel>Gender</InputLabel>
+          <Select label="Gender" value={genderFilter}
+            onChange={(e) => setGenderFilter(e.target.value)}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="Male">Male</MenuItem>
+            <MenuItem value="Female">Female</MenuItem>
+            <MenuItem value="Other">Other</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Button variant="outlined"
+          color="primary" onClick={refetch}
+          disabled={loading || authLoading || !associateCollegeId}
+          startIcon={loading ? <CircularProgress size={18} /> : null}
+          sx={{
+            top:{md: 20},
+            minWidth: { xs: 110, md: 120 },
+            flex: { xs: 1, md: "unset" },
+            whiteSpace: "nowrap",
+          }}
+        >
+          {loading ? "Loading..." : "Refresh"}
+        </Button>
+      </Stack>
+    </Stack>
         
         {err && ( 
           <Alert sx={{ mb: 3, borderRadius: 2 }} severity="error">{err}</Alert> 

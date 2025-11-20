@@ -1,41 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import AuthContext from '../../context/AuthContext';
-import {
-  Typography,
-  Grid,
-  CardActionArea,
-  Container,
-  Box,
-  Divider,
-  useTheme,
-  Card,
+import {Typography, Grid, CardActionArea, Container, Box, Divider, useTheme, Card,
 } from '@mui/material';
-import {
-  CalendarMonth,        
-  FactCheck,            
-  UploadFile,           
-  AssignmentTurnedIn,   
-  Feedback,             
-  Grading,              
-  TrendingUp,           
-  Forum,                
-  LocalLibrary,         
-  Campaign,             
-  Description,          
-  AutoStories,          
-
+import {CalendarMonth, FactCheck, UploadFile, AssignmentTurnedIn, Feedback, Grading, TrendingUp, 
+  Forum, LocalLibrary, Campaign, Description, AutoStories,          
   // Associate-only icons
-  VerifiedUser,         
-  PeopleAlt,            
-  Payments,             
-  Publish,              
-  SupportAgent,         
-  ConfirmationNumber,   
-  EventNote,            
-  CloudUpload,          
-  EmojiEvents,          
-  ScheduleSend,         
+  VerifiedUser, PeopleAlt, Payments, Publish, SupportAgent, ConfirmationNumber, EventNote, CloudUpload, EmojiEvents, ScheduleSend,         
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';

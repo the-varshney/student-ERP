@@ -521,7 +521,7 @@ export default function StudentFeedback() {
                         Teacher: {teacherLabel}
                       </Typography>
 
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={1}>
                         {cfg.enabled && !deadlinePassed(cfg.deadline) ? (
                           <Chip icon={<CheckCircleOutlineIcon />} label="Open" color="success" size="small" />
                         ) : (

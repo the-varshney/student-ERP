@@ -52,21 +52,9 @@ const getCache = (key) => {
 function AddTeacher() {
   const theme = useTheme();
 
-  const [teacherData, setTeacherData] = useState({
-    teacherId: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    contactNumber: "",
-    college: "",
-    collegeName: "",
-    department: "",
-    departmentName: "",
-    program: "",
-    programName: "",
-    profilePic: null,
-    subjects: [{ semester: "", subjectId: "", subjectName: "" }],
+  const [teacherData, setTeacherData] = useState({teacherId: "", firstName: "", lastName: "", email: "", 
+    password: "", contactNumber: "", college: "", collegeName: "", department: "", departmentName: "", 
+    program: "", programName: "", profilePic: null, subjects: [{ semester: "", subjectId: "", subjectName: "" }], 
     isCollegeAssociate: false,
   });
 
@@ -400,22 +388,17 @@ function AddTeacher() {
 
       const newTeacher = {
         teacherId: teacherData.teacherId,
-        firstName: teacherData.firstName,
-        lastName: teacherData.lastName,
+        firstName: teacherData.firstName, lastName: teacherData.lastName,
         email: teacherData.email,
         contactNumber: Number(teacherData.contactNumber),
-        college: teacherData.college,
-        department: teacherData.department,
-        program: teacherData.program,
-        profilePicUrl: profilePicUrl || "",
-        role: "Teacher",
+        college: teacherData.college, department: teacherData.department,  program: teacherData.program,
+        profilePicUrl: profilePicUrl || "",  role: "Teacher",
         isCollegeAssociate: teacherData.isCollegeAssociate,
         subjects: teacherData.subjects.map((s) => ({
           semester: Number(s.semester),
           subjectId: s.subjectId,
           subjectName: s.subjectName,
-        })),
-        uid: user.uid,
+        })), uid: user.uid,
       };
 
       await setDoc(doc(db, "Teachers", user.uid), newTeacher);
@@ -440,17 +423,8 @@ function AddTeacher() {
 
   const resetForm = () => {
     setTeacherData({
-      teacherId: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      contactNumber: "",
-      department: "",
-      program: "",
-      college: "",
-      profilePic: null,
-      subjects: [{ semester: "", subjectId: "", subjectName: "" }],
+      teacherId: "", firstName: "", lastName: "", email: "", password: "", contactNumber: "", department: "", 
+      program: "", college: "", profilePic: null, subjects: [{ semester: "", subjectId: "", subjectName: "" }],
       isCollegeAssociate: false,
     });
     setProfilePicUrl("");

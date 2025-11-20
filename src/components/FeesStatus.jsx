@@ -390,7 +390,7 @@ export default function StudentFeeStatusViewer({ associateCollegeId, isAdmin = f
       }
 
       // Fetch Firebase profiles
-      setLoadingStep('Fetching Firebase profiles...');
+      setLoadingStep('Fetching Students profiles...');
       const firebaseIds = combinedMongo.map(s => s.firebaseId).filter(Boolean);
       const chunks = [];
       for (let i = 0; i < firebaseIds.length; i += 10) chunks.push(firebaseIds.slice(i, i + 10));
@@ -603,7 +603,7 @@ export default function StudentFeeStatusViewer({ associateCollegeId, isAdmin = f
                   <Box flexGrow={1}>
                     <Typography variant="subtitle1" fontWeight="bold" noWrap>{student.firstName} {student.lastName}</Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>Enrollment: {student.enrollmentNo}</Typography>
-                    <Stack direction="column" spacing={1} mt={0.5} flexWrap="wrap">
+                    <Stack direction="column" spacing={1} mt={0.8} flexWrap="wrap" sx={{maxWidth: "50vw"}}>
                       <Chip label={student.department?.departmentName || student.department || 'N/A'} size="small" color="secondary" />
                       <Chip label={student.program?.programName || student.program || 'N/A'} size="small" color="primary" />
                     </Stack>

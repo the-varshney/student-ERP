@@ -484,9 +484,10 @@ const Results = () => {
                 sx={{
                   position: "absolute",
                   top: "50%",
-                  left: "50%",
+                  left: {xs: "45%", md: "50%"},
                   transform: "translate(-50%, -50%)",
                   width: { xs: "95%", sm: "80%", md: "70%" },
+                  maxWidth: "90vw",
                   bgcolor: theme.palette.background.paper,
                   borderRadius: "16px",
                   boxShadow: 24,

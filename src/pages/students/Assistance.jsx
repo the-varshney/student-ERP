@@ -24,6 +24,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/
 import { auth, db } from '../../firebase/Firebase';
 import { themes } from '../../components/theme';
 import MessageBox from '../../components/messageBox';
+import { HeaderBackButton } from '../../components/header';
 
 const NS = 'erp';
 const VER = 'v1';
@@ -323,7 +324,7 @@ export default function Assistance() {
           {/* Ticket List */}
           <Grid item xs={12} md={4} lg={3} sx={{ display: { xs: selectedTicket ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', height: '100%' }}>
             <Paper elevation={3} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, borderRadius: 3, flexShrink: 0 }}>
-              <Typography variant="h6" component="h2" fontWeight={700}>Your Tickets</Typography>
+              <Typography variant="h6" component="h2" fontWeight={700}> <HeaderBackButton/> Your Tickets</Typography>
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewTicketDialogOpen(true)} disabled={!student?.firebaseUid}>
                 New
               </Button>
@@ -405,11 +406,12 @@ export default function Assistance() {
                       userRole="student"
                       senderColor="primary.main"
                       senderTextColor="primary.contrastText"
-                      receiverColor={themes?.default?.palette?.green?.hover || '#e9f8e6'}
+                      receiverColor={themes?.default?.palette?.green?.hover || '#000000'}
                       receiverTextColor="text.primary"
                       containerHeight="100%"
                       containerMaxWidth="55vw"
-                      messagesMaxWidth="50vw"
+                      messagesMaxWidth="80%"
+                      messagesContainerWidth="100%"
                       selfRadius="20px 20px 5px 20px"
                       otherRadius="20px 20px 20px 5px"
                       contentPadding={{ xs: 1, sm: 2, md: 3 }}
