@@ -24,7 +24,7 @@ Realtime	Payments: Razorpay
 
 Quick Start
 # Clone the repo
-git clone [https://github.com/yourusername/student-erp.git](https://github.com/the-varshney/student-ERP.git)
+git clone [https://github.com/the-varshney/student-erp.git](https://github.com/the-varshney/student-ERP.git)
 
 cd student-erp
 
@@ -32,11 +32,19 @@ cd student-erp
 npm install
 
 # Backend setup
+
+
 cd backend
+
+
 npm install
+
+
 node server.js
 
 # Frontend setup
+
+
 cd ../frontend
 
 
