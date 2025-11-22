@@ -24,7 +24,7 @@ Realtime	Payments: Razorpay
 
 Quick Start
 # Clone the repo
-git clone https://github.com/yourusername/student-erp.git
+git clone [https://github.com/yourusername/student-erp.git](https://github.com/the-varshney/student-ERP.git)
 
 cd student-erp
 
@@ -38,7 +38,11 @@ node server.js
 
 # Frontend setup
 cd ../frontend
+
+
 npm start
+
+
 Note: Set up your MongoDB Atlas & Firebase credentials in .env as described in the project code.
 
 📬 Contact
@@ -46,5 +50,6 @@ For demo access, queries, or collaborations, contact: vinayakvarshney1235@gmail.
 
 Credits: 
 Created with ❤️ by Vinayak Varshney...
+
 Inspired by open-source design trends and modern tech for education platforms.
 
